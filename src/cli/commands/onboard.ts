@@ -714,7 +714,8 @@ ${blue}  ┌──────────────────────�
       "Next steps:\n\n" +
         "1. Start the agent:\n" +
         "   $ teleton start\n\n" +
-        "2. Send a message to your Telegram account to test",
+        "2. Send /boot as your first message to bootstrap\n" +
+        "   the agent's personality and get to know each other",
       "Ready"
     );
   } else {
