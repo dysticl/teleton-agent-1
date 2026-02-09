@@ -78,3 +78,36 @@ export interface RegisteredTool {
   tool: Tool;
   executor: ToolExecutor;
 }
+
+/**
+ * Built-in plugin module interface.
+ * Modules are self-contained feature packs (casino, deals, etc.)
+ * that register their own tools, config, and migrations.
+ */
+export interface PluginModule {
+  name: string;
+  version: string;
+  /** Called ALWAYS (even if disabled) to merge YAML config into runtime defaults */
+  configure?(config: Config): void;
+  /** Called ALWAYS — must be idempotent (IF NOT EXISTS) */
+  migrate?(db: Database.Database): void;
+  /** Returns tools to register. Returns [] if the module is disabled. */
+  tools(config: Config): Array<{
+    tool: Tool;
+    executor: ToolExecutor<any>;
+    scope?: ToolScope;
+  }>;
+  /** Start background jobs (polling, timers, etc.) */
+  start?(context: PluginContext): Promise<void>;
+  /** Stop background jobs */
+  stop?(): Promise<void>;
+}
+
+/**
+ * Context provided to plugin modules during start()
+ */
+export interface PluginContext {
+  bridge: TelegramBridge;
+  db: Database.Database;
+  config: Config;
+}

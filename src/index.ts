@@ -17,8 +17,9 @@ import { registerAllTools } from "./agent/tools/register-all.js";
 import { loadPlugins } from "./agent/tools/plugin-loader.js";
 import { getProviderMetadata, type SupportedProvider } from "./config/providers.js";
 import { DealBot, VerificationPoller } from "./bot/index.js";
-import { initCasinoConfig } from "./casino/config.js";
 import { initDealsConfig, DEALS_CONFIG } from "./deals/config.js";
+import { loadModules } from "./agent/tools/module-loader.js";
+import type { PluginModule, PluginContext } from "./agent/tools/types.js";
 import { verbose } from "./utils/logger.js";
 
 /**
@@ -35,6 +36,7 @@ export class TonnetApp {
   private toolCount: number = 0;
   private toolRegistry: ToolRegistry;
   private dependencyResolver: any; // TaskDependencyResolver, imported lazily
+  private modules: PluginModule[] = [];
   private dealBot: DealBot | null = null;
   private verificationPoller: VerificationPoller | null = null;
   private expiryInterval: ReturnType<typeof setInterval> | null = null;
@@ -44,7 +46,6 @@ export class TonnetApp {
     this.config = loadConfig(configPath);
 
     // Initialize subsystem configs from YAML
-    initCasinoConfig(this.config.casino);
     initDealsConfig(this.config.deals);
 
     // Set TonAPI key if configured
@@ -59,8 +60,7 @@ export class TonnetApp {
     this.toolRegistry = new ToolRegistry();
     registerAllTools(this.toolRegistry, this.config);
 
-    // Initialize agent with tools
-    this.toolCount = this.toolRegistry.count;
+    // Initialize agent with tools (tool count updated after module loading below)
     this.agent = new AgentRuntime(this.config, soul, this.toolRegistry);
 
     // Initialize Telegram bridge with config
@@ -91,6 +91,10 @@ export class TonnetApp {
     });
 
     const db = getDatabase().getDb();
+
+    // Load built-in plugin modules (casino, etc.)
+    this.modules = loadModules(this.toolRegistry, this.config, db);
+    this.toolCount = this.toolRegistry.count;
 
     // Initialize market price service (if enabled, or required by deals)
     if (this.config.market.enabled || this.config.deals.enabled) {
@@ -188,6 +192,17 @@ ${blue}  ┌──────────────────────�
       ? true
       : false;
     this.agent.initializeContextBuilder(memory.embedder, vectorEnabled);
+
+    // Start module background jobs
+    const moduleDb = getDatabase().getDb();
+    const pluginContext: PluginContext = {
+      bridge: this.bridge,
+      db: moduleDb,
+      config: this.config,
+    };
+    for (const mod of this.modules) {
+      await mod.start?.(pluginContext);
+    }
 
     // Start market price service
     if (this.marketService) {
@@ -549,6 +564,11 @@ ${blue}  ┌──────────────────────�
     // Stop deal expiry interval
     if (this.expiryInterval) {
       clearInterval(this.expiryInterval);
+    }
+
+    // Stop module background jobs
+    for (const mod of this.modules) {
+      await mod.stop?.();
     }
 
     // Stop market price service

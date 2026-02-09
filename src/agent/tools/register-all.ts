@@ -255,20 +255,6 @@ import {
   workspaceRenameExecutor,
 } from "./workspace/index.js";
 
-// Casino tools
-import {
-  casinoBalanceTool,
-  casinoBalanceExecutor,
-  casinoSpinTool,
-  casinoSpinExecutor,
-  casinoDiceTool,
-  casinoDiceExecutor,
-  casinoLeaderboardTool,
-  casinoLeaderboardExecutor,
-  casinoMyStatsTool,
-  casinoMyStatsExecutor,
-} from "./casino/index.js";
-
 // Deals tools
 import {
   dealProposeTool,
@@ -285,7 +271,8 @@ import {
 
 /**
  * Register all tools with the given registry.
- * Conditionally registers casino and deals tools based on config.
+ * Conditionally registers deals tools based on config.
+ * Casino tools are loaded via module-loader.ts.
  */
 export function registerAllTools(registry: ToolRegistry, config: Config): void {
   // Basic messaging
@@ -461,15 +448,6 @@ export function registerAllTools(registry: ToolRegistry, config: Config): void {
   registry.register(workspaceDeleteTool, workspaceDeleteExecutor, "dm-only");
   registry.register(workspaceInfoTool, workspaceInfoExecutor);
   registry.register(workspaceRenameTool, workspaceRenameExecutor, "dm-only");
-
-  // Teleton Casino (slot & dice games with TON payments)
-  if (config.casino.enabled) {
-    registry.register(casinoBalanceTool, casinoBalanceExecutor);
-    registry.register(casinoSpinTool, casinoSpinExecutor);
-    registry.register(casinoDiceTool, casinoDiceExecutor);
-    registry.register(casinoLeaderboardTool, casinoLeaderboardExecutor);
-    registry.register(casinoMyStatsTool, casinoMyStatsExecutor);
-  }
 
   // Deals System (secure gift/TON trading with STRATEGY.md enforcement; mutations dm-only)
   if (config.deals.enabled) {
