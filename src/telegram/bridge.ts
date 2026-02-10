@@ -105,7 +105,8 @@ export class TelegramBridge {
    */
   async getMessages(chatId: string, limit: number = 50): Promise<TelegramMessage[]> {
     try {
-      const messages = await this.client.getMessages(chatId, { limit });
+      const peer = this.peerCache.get(chatId) || chatId;
+      const messages = await this.client.getMessages(peer, { limit });
       return await Promise.all(messages.map((msg) => this.parseMessage(msg)));
     } catch (error) {
       console.error("Error getting messages:", error);

@@ -317,7 +317,7 @@ export class TelegramUserClient {
    * Get messages from a chat
    */
   async getMessages(
-    entity: string,
+    entity: string | Api.TypePeer,
     options?: {
       limit?: number;
       offsetId?: number;
