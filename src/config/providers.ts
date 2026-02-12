@@ -87,7 +87,7 @@ const PROVIDER_REGISTRY: Record<SupportedProvider, ProviderMetadata> = {
     keyHint: "sk-or-v1-...",
     consoleUrl: "https://openrouter.ai/keys",
     defaultModel: "anthropic/claude-opus-4.5",
-    utilityModel: "google/gemini-2.0-flash-001:free",
+    utilityModel: "google/gemini-2.5-flash-lite",
     toolLimit: 128,
     piAiProvider: "openrouter",
   },

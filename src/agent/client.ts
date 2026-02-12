@@ -37,6 +37,9 @@ export function getProviderModel(provider: SupportedProvider, modelId: string): 
 
   try {
     const model = getModel(meta.piAiProvider as any, modelId as any);
+    if (!model) {
+      throw new Error(`getModel returned undefined for ${provider}/${modelId}`);
+    }
     modelCache.set(cacheKey, model);
     return model;
   } catch (e) {
@@ -50,6 +53,11 @@ export function getProviderModel(provider: SupportedProvider, modelId: string): 
 
     try {
       const model = getModel(meta.piAiProvider as any, meta.defaultModel as any);
+      if (!model) {
+        throw new Error(
+          `Fallback model ${meta.defaultModel} also returned undefined for ${provider}`
+        );
+      }
       modelCache.set(fallbackKey, model);
       return model;
     } catch {
