@@ -16,7 +16,7 @@ import { readdirSync, existsSync, statSync } from "fs";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import { WORKSPACE_PATHS, TELETON_ROOT } from "../../workspace/paths.js";
-import { openModuleDb, createDbWrapper } from "../../utils/module-db.js";
+import { openModuleDb, createDbWrapper, migrateFromMainDb } from "../../utils/module-db.js";
 import type { PluginModule, PluginContext, Tool, ToolExecutor, ToolScope } from "./types.js";
 import type { Config } from "../../config/schema.js";
 import type Database from "better-sqlite3";
@@ -135,6 +135,18 @@ function adaptPlugin(
         const dbPath = join(PLUGIN_DATA_DIR, `${pluginName}.db`);
         pluginDb = openModuleDb(dbPath);
         raw.migrate!(pluginDb);
+
+        // One-time migration of legacy data from memory.db (skips if tables already have data)
+        const pluginTables = (
+          pluginDb
+            .prepare(
+              `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`
+            )
+            .all() as { name: string }[]
+        ).map((t) => t.name);
+        if (pluginTables.length > 0) {
+          migrateFromMainDb(pluginDb, pluginTables);
+        }
       } catch (err) {
         console.error(
           `❌ [${pluginName}] migrate() failed:`,
