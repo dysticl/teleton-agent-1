@@ -16,6 +16,7 @@ import { registerAllTools } from "./agent/tools/register-all.js";
 import { loadEnhancedPlugins, type PluginModuleWithHooks } from "./agent/tools/plugin-loader.js";
 import type { SDKDependencies } from "./sdk/index.js";
 import { getProviderMetadata, type SupportedProvider } from "./config/providers.js";
+import { readRawConfig, setNestedValue, writeRawConfig } from "./config/configurable-keys.js";
 import { loadModules } from "./agent/tools/module-loader.js";
 import { ModulePermissions } from "./agent/tools/module-permissions.js";
 import { SHUTDOWN_TIMEOUT_MS } from "./constants/timeouts.js";
@@ -260,6 +261,9 @@ ${blue}  ┌──────────────────────�
       process.exit(1);
     }
 
+    // Resolve owner name/username from Telegram if not already set
+    await this.resolveOwnerInfo();
+
     // Set own user ID in handler after connection
     const ownUserId = this.bridge.getOwnUserId();
     if (ownUserId) {
@@ -422,6 +426,71 @@ ${blue}  ┌──────────────────────�
 
     // Keep process alive
     await new Promise(() => {});
+  }
+
+  /**
+   * Resolve owner name and username from Telegram API if not already configured.
+   * Persists resolved values to the config file so this only happens once.
+   */
+  private async resolveOwnerInfo(): Promise<void> {
+    try {
+      // Skip if both are already set
+      if (this.config.telegram.owner_name && this.config.telegram.owner_username) {
+        return;
+      }
+
+      // Can't resolve without an owner ID
+      if (!this.config.telegram.owner_id) {
+        return;
+      }
+
+      const entity = await this.bridge.getClient().getEntity(String(this.config.telegram.owner_id));
+
+      // Check that the entity is a User (has firstName)
+      if (!entity || !("firstName" in entity)) {
+        return;
+      }
+
+      const firstName = entity.firstName || "";
+      const lastName = (entity as any).lastName || "";
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+      const username = (entity as any).username || "";
+
+      let updated = false;
+
+      if (!this.config.telegram.owner_name && fullName) {
+        this.config.telegram.owner_name = fullName;
+        updated = true;
+      }
+
+      if (!this.config.telegram.owner_username && username) {
+        this.config.telegram.owner_username = username;
+        updated = true;
+      }
+
+      if (updated) {
+        // Persist to disk
+        const raw = readRawConfig(this.configPath);
+        if (this.config.telegram.owner_name) {
+          setNestedValue(raw, "telegram.owner_name", this.config.telegram.owner_name);
+        }
+        if (this.config.telegram.owner_username) {
+          setNestedValue(raw, "telegram.owner_username", this.config.telegram.owner_username);
+        }
+        writeRawConfig(raw, this.configPath);
+
+        const displayName = this.config.telegram.owner_name || "Unknown";
+        const displayUsername = this.config.telegram.owner_username
+          ? ` (@${this.config.telegram.owner_username})`
+          : "";
+        console.log(`👤 Owner resolved: ${displayName}${displayUsername}`);
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ Could not resolve owner info:",
+        error instanceof Error ? error.message : error
+      );
+    }
   }
 
   /**

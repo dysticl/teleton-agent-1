@@ -1,8 +1,35 @@
 /**
  * Teleton Onboarding Wizard
+ *
+ * Interactive setup wizard with @inquirer/prompts UI.
+ * Fused ASCII banner + progress box frame.
  */
 
-import { createPrompter, CancelledError } from "../prompts.js";
+import {
+  createPrompter,
+  CancelledError,
+  input,
+  select,
+  checkbox,
+  confirm,
+  password,
+  inquirerTheme as theme,
+  wizardFrame,
+  noteBox,
+  finalSummaryBox,
+  FRAME_WIDTH,
+  TON,
+  GREEN,
+  CYAN,
+  DIM,
+  RED,
+  WHITE,
+  padRight,
+  padRightAnsi,
+  stripAnsi,
+  type StepDef,
+} from "../prompts.js";
+
 import { ensureWorkspace, isNewWorkspace } from "../../workspace/manager.js";
 import { writeFileSync, readFileSync, existsSync, chmodSync } from "fs";
 import { join } from "path";
@@ -25,6 +52,7 @@ import {
 } from "../../config/providers.js";
 import { TELEGRAM_MAX_MESSAGE_LENGTH } from "../../constants/limits.js";
 import { fetchWithTimeout } from "../../utils/fetch.js";
+import ora from "ora";
 
 export interface OnboardOptions {
   workspace?: string;
@@ -37,6 +65,104 @@ export interface OnboardOptions {
   provider?: SupportedProvider;
   tavilyApiKey?: string;
 }
+
+// ── Progress steps ────────────────────────────────────────────────────
+
+const STEPS: StepDef[] = [
+  { label: "Agent", desc: "Name & mode" },
+  { label: "Provider", desc: "LLM & API key" },
+  { label: "Telegram", desc: "Credentials" },
+  { label: "Config", desc: "Model & policies" },
+  { label: "Modules", desc: "Optional features" },
+  { label: "Wallet", desc: "TON blockchain" },
+  { label: "Connect", desc: "Telegram auth" },
+];
+
+// ── Helpers ────────────────────────────────────────────────────────────
+
+function redraw(currentStep: number): void {
+  console.clear();
+  console.log();
+  console.log(wizardFrame(currentStep, STEPS));
+  console.log();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// ── Model catalogs (per provider) ─────────────────────────────────────
+
+const MODEL_OPTIONS: Record<string, Array<{ value: string; name: string; description: string }>> = {
+  anthropic: [
+    {
+      value: "claude-opus-4-5-20251101",
+      name: "Claude Opus 4.5",
+      description: "Most capable, $5/M",
+    },
+    { value: "claude-sonnet-4-0", name: "Claude Sonnet 4", description: "Balanced, $3/M" },
+    {
+      value: "claude-haiku-4-5-20251001",
+      name: "Claude Haiku 4.5",
+      description: "Fast & cheap, $1/M",
+    },
+    {
+      value: "claude-3-5-haiku-20241022",
+      name: "Claude 3.5 Haiku",
+      description: "Cheapest, $0.80/M",
+    },
+  ],
+  openai: [
+    { value: "gpt-5", name: "GPT-5", description: "Most capable, 400K ctx, $1.25/M" },
+    { value: "gpt-4o", name: "GPT-4o", description: "Balanced, 128K ctx, $2.50/M" },
+    { value: "gpt-4.1", name: "GPT-4.1", description: "1M ctx, $2/M" },
+    { value: "gpt-4.1-mini", name: "GPT-4.1 Mini", description: "1M ctx, cheap, $0.40/M" },
+    { value: "o3", name: "o3", description: "Reasoning, 200K ctx, $2/M" },
+  ],
+  google: [
+    { value: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "Fast, 1M ctx, $0.30/M" },
+    {
+      value: "gemini-2.5-pro",
+      name: "Gemini 2.5 Pro",
+      description: "Most capable, 1M ctx, $1.25/M",
+    },
+    { value: "gemini-2.0-flash", name: "Gemini 2.0 Flash", description: "Cheap, 1M ctx, $0.10/M" },
+  ],
+  xai: [
+    { value: "grok-4-fast", name: "Grok 4 Fast", description: "Vision, 2M ctx, $0.20/M" },
+    { value: "grok-4", name: "Grok 4", description: "Reasoning, 256K ctx, $3/M" },
+    { value: "grok-3", name: "Grok 3", description: "Stable, 131K ctx, $3/M" },
+  ],
+  groq: [
+    {
+      value: "meta-llama/llama-4-maverick-17b-128e-instruct",
+      name: "Llama 4 Maverick",
+      description: "Vision, 131K ctx, $0.20/M",
+    },
+    { value: "qwen/qwen3-32b", name: "Qwen3 32B", description: "Reasoning, 131K ctx, $0.29/M" },
+    {
+      value: "deepseek-r1-distill-llama-70b",
+      name: "DeepSeek R1 70B",
+      description: "Reasoning, 131K ctx, $0.75/M",
+    },
+    {
+      value: "llama-3.3-70b-versatile",
+      name: "Llama 3.3 70B",
+      description: "General purpose, 131K ctx, $0.59/M",
+    },
+  ],
+  openrouter: [
+    { value: "anthropic/claude-opus-4.5", name: "Claude Opus 4.5", description: "200K ctx, $5/M" },
+    { value: "openai/gpt-5", name: "GPT-5", description: "400K ctx, $1.25/M" },
+    { value: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M ctx, $0.30/M" },
+    {
+      value: "deepseek/deepseek-r1",
+      name: "DeepSeek R1",
+      description: "Reasoning, 64K ctx, $0.70/M",
+    },
+    { value: "x-ai/grok-4", name: "Grok 4", description: "256K ctx, $3/M" },
+  ],
+};
 
 /**
  * Main onboard command
@@ -52,7 +178,7 @@ export async function onboardCommand(options: OnboardOptions = {}): Promise<void
     }
   } catch (err) {
     if (err instanceof CancelledError) {
-      prompter.outro("Onboarding cancelled");
+      console.log(`\n  ${DIM("Setup cancelled. No changes were made.")}\n`);
       process.exit(0);
     }
     throw err;
@@ -66,74 +192,92 @@ async function runInteractiveOnboarding(
   options: OnboardOptions,
   prompter: ReturnType<typeof createPrompter>
 ): Promise<void> {
-  // ASCII banner (blue color)
-  const blue = "\x1b[34m";
-  const reset = "\x1b[0m";
-  console.log(`
-${blue}  ┌───────────────────────────────────────────────────────────────────────────────────────┐
-  │                                                                                       │
-  │       ______________    ________________  _   __   ___   _____________   ________     │
-  │      /_  __/ ____/ /   / ____/_  __/ __ \\/ | / /  /   | / ____/ ____/ | / /_  __/     │
-  │       / / / __/ / /   / __/   / / / / / /  |/ /  / /| |/ / __/ __/ /  |/ / / /        │
-  │      / / / /___/ /___/ /___  / / / /_/ / /|  /  / ___ / /_/ / /___/ /|  / / /         │
-  │     /_/ /_____/_____/_____/ /_/  \\____/_/ |_/  /_/  |_\\____/_____/_/ |_/ /_/          │
-  │                                                                                       │
-  └────────────────────────────────────────────────────────────────────────────── SETUP ──┘${reset}
+  // ── Shared state ──
+  let selectedFlow: "quick" | "advanced" = "quick";
+  let selectedProvider: SupportedProvider = "anthropic";
+  let dealsEnabled = false;
+  let selectedModel = "";
+  let apiKey = "";
+  let apiId = 0;
+  let apiHash = "";
+  let phone = "";
+  let userId = 0;
+  let tonapiKey: string | undefined;
+  let tavilyApiKey: string | undefined;
+  let botToken: string | undefined;
+  let botUsername: string | undefined;
+  let dmPolicy: "open" | "allowlist" | "pairing" | "disabled" = "open";
+  let groupPolicy: "open" | "allowlist" | "disabled" = "open";
+  let requireMention = true;
+  let maxAgenticIterations = "5";
+  let buyMaxFloorPercent = 100;
+  let sellMinFloorPercent = 105;
 
-  Need help? Join @ResistanceForum on Telegram
-`);
+  // Intro
+  console.clear();
+  console.log();
+  console.log(wizardFrame(0, STEPS));
+  console.log();
+  await sleep(800);
 
-  // Warning
-  prompter.note(
-    "Your Teleton agent will have FULL CONTROL over:\n\n" +
-      "• TELEGRAM: Read, send, and delete messages on your behalf\n" +
-      "• TON WALLET: A new wallet will be generated that the agent\n" +
-      "  can use to send transactions autonomously\n\n" +
+  // ════════════════════════════════════════════════════════════════════
+  // Step 0: Agent — security warning, workspace, name, mode, modules
+  // ════════════════════════════════════════════════════════════════════
+  redraw(0);
+
+  noteBox(
+    "Your Teleton agent will have FULL CONTROL over:\n" +
+      "\n" +
+      "  • TELEGRAM: Read, send, and delete messages on your behalf\n" +
+      "  • TON WALLET: A new wallet will be generated that the agent\n" +
+      "    can use to send transactions autonomously\n" +
+      "\n" +
       "We strongly recommend using a dedicated Telegram account.\n" +
       "Only fund the generated wallet with amounts you're comfortable\n" +
       "letting the agent manage.",
-    "Security Warning"
+    "Security Warning",
+    RED
   );
 
-  const acceptRisk = await prompter.confirm({
+  const acceptRisk = await confirm({
     message: "I understand the risks and want to continue",
-    initialValue: false,
+    default: false,
+    theme,
   });
 
   if (!acceptRisk) {
-    prompter.outro("Setup cancelled - you must accept the risks to continue");
+    console.log(`\n  ${DIM("Setup cancelled — you must accept the risks to continue.")}\n`);
     process.exit(1);
   }
 
-  // Workspace setup
-  const spinner = prompter.spinner();
-  spinner.start("Creating workspace...");
-
+  // Workspace
+  const spinner = ora({ color: "cyan" });
+  spinner.start(DIM("Creating workspace..."));
   const workspace = await ensureWorkspace({
     workspaceDir: options.workspace,
     ensureTemplates: true,
   });
-
   const isNew = isNewWorkspace(workspace);
-  spinner.stop(`✓ Workspace: ${workspace.root}`);
+  spinner.succeed(DIM(`Workspace: ${workspace.root}`));
 
   if (!isNew) {
     prompter.warn("Existing configuration detected");
-    const shouldOverwrite = await prompter.confirm({
+    const shouldOverwrite = await confirm({
       message: "Overwrite existing configuration?",
-      initialValue: false,
+      default: false,
+      theme,
     });
-
     if (!shouldOverwrite) {
-      prompter.outro("Setup cancelled - existing configuration preserved");
+      console.log(`\n  ${DIM("Setup cancelled — existing configuration preserved.")}\n`);
       return;
     }
   }
 
   // Agent name
-  const agentName = await prompter.text({
+  const agentName = await input({
     message: "Give your agent a name (optional)",
-    placeholder: "e.g. Nova, Kai, Echo...",
+    default: "Nova",
+    theme,
   });
 
   if (agentName && agentName.trim() && existsSync(workspace.identityPath)) {
@@ -142,49 +286,59 @@ ${blue}  ┌──────────────────────�
     writeFileSync(workspace.identityPath, updated, "utf-8");
   }
 
-  // Flow selection
-  const flow = await prompter.select({
+  // Installation mode
+  selectedFlow = await select({
     message: "Installation mode",
-    options: [
-      { value: "quick", label: "QuickStart", hint: "Minimal configuration (recommended)" },
-      { value: "advanced", label: "Advanced", hint: "Detailed configuration" },
+    default: "quick",
+    theme,
+    choices: [
+      {
+        value: "quick" as const,
+        name: "⚡ QuickStart",
+        description: "Minimal configuration (recommended)",
+      },
+      { value: "advanced" as const, name: "⚙  Advanced", description: "Detailed configuration" },
     ],
-    initialValue: "quick",
   });
 
   // Optional modules
-  const enabledModules: string[] = await prompter.multiselect({
-    message: "Enable optional modules (Space to toggle, Enter to confirm)",
-    options: [
-      {
-        value: "deals",
-        label: "Gifts & Deals",
-        hint: "Gift/TON trading with escrow system",
-      },
+  const enabledModules: string[] = await checkbox({
+    message: "Enable optional modules (Space to toggle)",
+    theme: {
+      ...theme,
+      icon: { cursor: TON("❯"), checked: GREEN("✔"), unchecked: DIM("○") },
+    },
+    choices: [
+      { value: "deals", name: "Gifts & Deals", description: "Gift/TON trading with escrow system" },
     ],
-    required: false,
   });
+  dealsEnabled = enabledModules.includes("deals");
 
-  const dealsEnabled = enabledModules.includes("deals");
+  STEPS[0].value = `${agentName} (${selectedFlow})${dealsEnabled ? " +deals" : ""}`;
 
-  // AI Provider selection
+  // ════════════════════════════════════════════════════════════════════
+  // Step 1: Provider — select + tool limit warning + API key
+  // ════════════════════════════════════════════════════════════════════
+  redraw(1);
+
   const providers = getSupportedProviders();
-  const selectedProvider: SupportedProvider = await prompter.select({
+  selectedProvider = await select({
     message: "AI Provider",
-    options: providers.map((p) => ({
+    default: "anthropic",
+    theme,
+    choices: providers.map((p) => ({
       value: p.id,
-      label: p.displayName,
-      hint:
+      name: p.displayName,
+      description:
         p.toolLimit !== null ? `${p.defaultModel} (max ${p.toolLimit} tools)` : `${p.defaultModel}`,
     })),
-    initialValue: "anthropic",
   });
 
   const providerMeta = getProviderMetadata(selectedProvider);
 
   // Tool limit warning
   if (providerMeta.toolLimit !== null) {
-    prompter.note(
+    noteBox(
       `${providerMeta.displayName} supports max ${providerMeta.toolLimit} tools.\n` +
         "Teleton currently has ~116 tools. If more tools are added,\n" +
         "some may be truncated.",
@@ -192,350 +346,448 @@ ${blue}  ┌──────────────────────�
     );
   }
 
-  // Telegram credentials
-  prompter.note(
-    "You need Telegram credentials from https://my.telegram.org/apps\n" +
-      "Create an application and note the API ID and API Hash",
-    "Telegram"
-  );
-
-  // Read env vars for pre-filling
-  const envApiId = process.env.TELETON_TG_API_ID;
-  const envApiHash = process.env.TELETON_TG_API_HASH;
-  const envPhone = process.env.TELETON_TG_PHONE;
+  // API key
   const envApiKey = process.env.TELETON_API_KEY;
-
-  const apiIdStr = options.apiId
-    ? options.apiId.toString()
-    : await prompter.text({
-        message: envApiId ? "API ID (from env)" : "API ID (from my.telegram.org)",
-        initialValue: envApiId,
-        validate: (value) => {
-          if (!value || isNaN(parseInt(value))) return "Invalid API ID (must be a number)";
-        },
-      });
-  const apiId = parseInt(apiIdStr);
-
-  const apiHash = options.apiHash
-    ? options.apiHash
-    : await prompter.text({
-        message: envApiHash ? "API Hash (from env)" : "API Hash (from my.telegram.org)",
-        initialValue: envApiHash,
-        validate: (value) => {
-          if (!value || value.length < 10) return "Invalid API Hash";
-        },
-      });
-
-  const phone = options.phone
-    ? options.phone
-    : await prompter.text({
-        message: envPhone
-          ? "Phone number (from env)"
-          : "Phone number (international format, e.g. +1234567890)",
-        placeholder: "+1234567890",
-        initialValue: envPhone,
-        validate: (value) => {
-          if (!value || !value.startsWith("+")) return "Invalid format (must start with +)";
-        },
-      });
-
-  // User ID for admin
-  prompter.note(
-    "To get your Telegram User ID:\n" +
-      "1. Open @userinfobot on Telegram\n" +
-      "2. Send /start\n" +
-      "3. Note the ID displayed",
-    "User ID"
-  );
-
-  const userIdStr = options.userId
-    ? options.userId.toString()
-    : await prompter.text({
-        message: "Your Telegram User ID (for admin rights)",
-        validate: (value) => {
-          if (!value || isNaN(parseInt(value))) return "Invalid User ID";
-        },
-      });
-  const userId = parseInt(userIdStr);
-
-  // Provider API Key (dynamic based on selection)
-  prompter.note(
-    `${providerMeta.displayName} API key required.\n` + `Get it at: ${providerMeta.consoleUrl}`,
-    "API Key"
-  );
-
-  let apiKey: string;
   if (options.apiKey) {
     apiKey = options.apiKey;
   } else if (envApiKey) {
     const validationError = validateApiKeyFormat(selectedProvider, envApiKey);
     if (validationError) {
       prompter.warn(`TELETON_API_KEY env var found but invalid: ${validationError}`);
-      apiKey = await prompter.password({
+      apiKey = await password({
         message: `${providerMeta.displayName} API Key (${providerMeta.keyHint})`,
-        validate: (value = "") => validateApiKeyFormat(selectedProvider, value),
+        theme,
+        validate: (value = "") => validateApiKeyFormat(selectedProvider, value) ?? true,
       });
     } else {
       prompter.log(`Using API key from TELETON_API_KEY env var`);
       apiKey = envApiKey;
     }
   } else {
-    apiKey = await prompter.password({
+    noteBox(
+      `${providerMeta.displayName} API key required.\nGet it at: ${providerMeta.consoleUrl}`,
+      "API Key",
+      TON
+    );
+    apiKey = await password({
       message: `${providerMeta.displayName} API Key (${providerMeta.keyHint})`,
-      validate: (value = "") => validateApiKeyFormat(selectedProvider, value),
+      theme,
+      validate: (value = "") => validateApiKeyFormat(selectedProvider, value) ?? true,
     });
   }
 
-  // Model selection (advanced mode only)
-  const MODEL_OPTIONS: Record<string, Array<{ value: string; label: string; hint: string }>> = {
-    anthropic: [
-      { value: "claude-opus-4-5-20251101", label: "Claude Opus 4.5", hint: "Most capable, $5/M" },
-      { value: "claude-sonnet-4-0", label: "Claude Sonnet 4", hint: "Balanced, $3/M" },
-      { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", hint: "Fast & cheap, $1/M" },
-      { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku", hint: "Cheapest, $0.80/M" },
-    ],
-    openai: [
-      { value: "gpt-5", label: "GPT-5", hint: "Most capable, 400K ctx, $1.25/M" },
-      { value: "gpt-4o", label: "GPT-4o", hint: "Balanced, 128K ctx, $2.50/M" },
-      { value: "gpt-4.1", label: "GPT-4.1", hint: "1M ctx, $2/M" },
-      { value: "gpt-4.1-mini", label: "GPT-4.1 Mini", hint: "1M ctx, cheap, $0.40/M" },
-      { value: "o3", label: "o3", hint: "Reasoning, 200K ctx, $2/M" },
-    ],
-    google: [
-      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "Fast, 1M ctx, $0.30/M" },
-      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", hint: "Most capable, 1M ctx, $1.25/M" },
-      { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash", hint: "Cheap, 1M ctx, $0.10/M" },
-    ],
-    xai: [
-      { value: "grok-4-fast", label: "Grok 4 Fast", hint: "Vision, 2M ctx, $0.20/M" },
-      { value: "grok-4", label: "Grok 4", hint: "Reasoning, 256K ctx, $3/M" },
-      { value: "grok-3", label: "Grok 3", hint: "Stable, 131K ctx, $3/M" },
-    ],
-    groq: [
-      {
-        value: "meta-llama/llama-4-maverick-17b-128e-instruct",
-        label: "Llama 4 Maverick",
-        hint: "Vision, 131K ctx, $0.20/M",
-      },
-      { value: "qwen/qwen3-32b", label: "Qwen3 32B", hint: "Reasoning, 131K ctx, $0.29/M" },
-      {
-        value: "deepseek-r1-distill-llama-70b",
-        label: "DeepSeek R1 70B",
-        hint: "Reasoning, 131K ctx, $0.75/M",
-      },
-      {
-        value: "llama-3.3-70b-versatile",
-        label: "Llama 3.3 70B",
-        hint: "General purpose, 131K ctx, $0.59/M",
-      },
-    ],
-    openrouter: [
-      { value: "anthropic/claude-opus-4.5", label: "Claude Opus 4.5", hint: "200K ctx, $5/M" },
-      { value: "openai/gpt-5", label: "GPT-5", hint: "400K ctx, $1.25/M" },
-      { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "1M ctx, $0.30/M" },
-      { value: "deepseek/deepseek-r1", label: "DeepSeek R1", hint: "Reasoning, 64K ctx, $0.70/M" },
-      { value: "x-ai/grok-4", label: "Grok 4", hint: "256K ctx, $3/M" },
-    ],
-  };
+  const maskedKey = apiKey.length > 10 ? apiKey.slice(0, 6) + "..." + apiKey.slice(-4) : "***";
+  STEPS[1].value = `${providerMeta.displayName}  ${DIM(maskedKey)}`;
 
-  let selectedModel = providerMeta.defaultModel;
-  if (flow === "advanced") {
+  // ════════════════════════════════════════════════════════════════════
+  // Step 2: Telegram — credentials
+  // ════════════════════════════════════════════════════════════════════
+  redraw(2);
+
+  noteBox(
+    "You need Telegram credentials from https://my.telegram.org/apps\n" +
+      "Create an application and note the API ID and API Hash",
+    "Telegram",
+    TON
+  );
+
+  const envApiId = process.env.TELETON_TG_API_ID;
+  const envApiHash = process.env.TELETON_TG_API_HASH;
+  const envPhone = process.env.TELETON_TG_PHONE;
+
+  const apiIdStr = options.apiId
+    ? options.apiId.toString()
+    : await input({
+        message: envApiId ? "API ID (from env)" : "API ID (from my.telegram.org)",
+        default: envApiId,
+        theme,
+        validate: (value) => {
+          if (!value || isNaN(parseInt(value))) return "Invalid API ID (must be a number)";
+          return true;
+        },
+      });
+  apiId = parseInt(apiIdStr);
+
+  apiHash = options.apiHash
+    ? options.apiHash
+    : await input({
+        message: envApiHash ? "API Hash (from env)" : "API Hash (from my.telegram.org)",
+        default: envApiHash,
+        theme,
+        validate: (value) => {
+          if (!value || value.length < 10) return "Invalid API Hash";
+          return true;
+        },
+      });
+
+  phone = options.phone
+    ? options.phone
+    : await input({
+        message: envPhone ? "Phone number (from env)" : "Phone number (international format)",
+        default: envPhone,
+        theme,
+        validate: (value) => {
+          if (!value || !value.startsWith("+")) return "Must start with +";
+          return true;
+        },
+      });
+
+  // User ID
+  noteBox(
+    "To get your Telegram User ID:\n" +
+      "1. Open @userinfobot on Telegram\n" +
+      "2. Send /start\n" +
+      "3. Note the ID displayed",
+    "User ID",
+    TON
+  );
+
+  const userIdStr = options.userId
+    ? options.userId.toString()
+    : await input({
+        message: "Your Telegram User ID (for admin rights)",
+        theme,
+        validate: (value) => {
+          if (!value || isNaN(parseInt(value))) return "Invalid User ID";
+          return true;
+        },
+      });
+  userId = parseInt(userIdStr);
+
+  STEPS[2].value = `${phone} (ID: ${userId})`;
+
+  // ════════════════════════════════════════════════════════════════════
+  // Step 3: Config — model + policies (advanced only)
+  // ════════════════════════════════════════════════════════════════════
+  redraw(3);
+
+  selectedModel = providerMeta.defaultModel;
+
+  if (selectedFlow === "advanced") {
     const providerModels = MODEL_OPTIONS[selectedProvider] || [];
-    const modelOptions = [
+    const modelChoices = [
       ...providerModels,
-      { value: "__custom__", label: "Custom", hint: "Enter a model ID manually" },
+      { value: "__custom__", name: "Custom", description: "Enter a model ID manually" },
     ];
 
-    const modelChoice = await prompter.select({
+    const modelChoice = await select({
       message: "Model",
-      options: modelOptions,
-      initialValue: providerMeta.defaultModel,
+      default: providerMeta.defaultModel,
+      theme,
+      choices: modelChoices,
     });
 
     if (modelChoice === "__custom__") {
-      const customModel = await prompter.text({
+      const customModel = await input({
         message: "Model ID",
-        placeholder: providerMeta.defaultModel,
-        initialValue: providerMeta.defaultModel,
+        default: providerMeta.defaultModel,
+        theme,
       });
-      if (customModel && customModel.trim()) {
-        selectedModel = customModel.trim();
-      }
+      if (customModel?.trim()) selectedModel = customModel.trim();
     } else {
       selectedModel = modelChoice;
     }
-  }
 
-  // Policies
-  let dmPolicy: "open" | "allowlist" | "pairing" | "disabled" = "open";
-  let groupPolicy: "open" | "allowlist" | "disabled" = "open";
-  let requireMention = true;
-  let maxAgenticIterations = "5";
-
-  if (flow === "advanced") {
-    dmPolicy = await prompter.select({
+    dmPolicy = await select({
       message: "DM policy (private messages)",
-      options: [
-        { value: "open", label: "Open", hint: "Reply to everyone" },
-        { value: "allowlist", label: "Allowlist", hint: "Only specific users" },
-        { value: "disabled", label: "Disabled", hint: "No DM replies" },
+      default: "open",
+      theme,
+      choices: [
+        { value: "open" as const, name: "Open", description: "Reply to everyone" },
+        { value: "allowlist" as const, name: "Allowlist", description: "Only specific users" },
+        { value: "disabled" as const, name: "Disabled", description: "No DM replies" },
       ],
-      initialValue: "open",
     });
 
-    groupPolicy = await prompter.select({
+    groupPolicy = await select({
       message: "Group policy",
-      options: [
-        { value: "open", label: "Open", hint: "Reply in all groups" },
-        { value: "allowlist", label: "Allowlist", hint: "Only specific groups" },
-        { value: "disabled", label: "Disabled", hint: "No group replies" },
+      default: "open",
+      theme,
+      choices: [
+        { value: "open" as const, name: "Open", description: "Reply in all groups" },
+        { value: "allowlist" as const, name: "Allowlist", description: "Only specific groups" },
+        { value: "disabled" as const, name: "Disabled", description: "No group replies" },
       ],
-      initialValue: "open",
     });
 
-    requireMention = await prompter.confirm({
+    requireMention = await confirm({
       message: "Require @mention in groups?",
-      initialValue: true,
+      default: true,
+      theme,
     });
 
-    maxAgenticIterations = await prompter.text({
+    maxAgenticIterations = await input({
       message: "Max agentic iterations (tool call loops per message)",
-      initialValue: "5",
-      validate: (v = "") => {
+      default: "5",
+      theme,
+      validate: (v) => {
         const n = parseInt(v, 10);
-        if (isNaN(n) || n < 1 || n > 50) return "Must be a number between 1 and 50";
+        return !isNaN(n) && n >= 1 && n <= 50 ? true : "Must be 1–50";
       },
     });
+
+    const modelLabel = providerModels.find((m) => m.value === selectedModel)?.name ?? selectedModel;
+    STEPS[3].value = `${modelLabel}, ${dmPolicy}/${groupPolicy}`;
+  } else {
+    STEPS[3].value = `${selectedModel} (defaults)`;
   }
 
-  // Deals bot setup (only if deals enabled)
-  let botToken: string | undefined;
-  let botUsername: string | undefined;
+  // ════════════════════════════════════════════════════════════════════
+  // Step 4: Modules — deals bot + TonAPI + Tavily
+  // ════════════════════════════════════════════════════════════════════
+  redraw(4);
 
-  // Deals strategy thresholds (only if deals enabled)
-  let buyMaxFloorPercent = 100;
-  let sellMinFloorPercent = 105;
+  const extras: string[] = [];
 
   if (dealsEnabled) {
-    const customizeStrategy = await prompter.confirm({
-      message: "Customize trading thresholds? (default: buy ≤ floor, sell ≥ floor +5%)",
-      initialValue: false,
+    // Trading thresholds
+    const customizeStrategy = await confirm({
+      message: `Customize trading thresholds? ${DIM("(default: buy ≤ floor, sell ≥ floor +5%)")}`,
+      default: false,
+      theme,
     });
 
     if (customizeStrategy) {
-      const buyInput = await prompter.text({
+      const buyInput = await input({
         message: "Max buy price (% of floor price)",
-        initialValue: "100",
-        validate: (v = "") => {
+        default: "100",
+        theme,
+        validate: (v) => {
           const n = parseInt(v, 10);
-          if (isNaN(n) || n < 50 || n > 150) return "Must be between 50 and 150";
+          return !isNaN(n) && n >= 50 && n <= 150 ? true : "Must be 50–150";
         },
       });
       buyMaxFloorPercent = parseInt(buyInput, 10);
 
-      const sellInput = await prompter.text({
+      const sellInput = await input({
         message: "Min sell price (% of floor price)",
-        initialValue: "105",
-        validate: (v = "") => {
+        default: "105",
+        theme,
+        validate: (v) => {
           const n = parseInt(v, 10);
-          if (isNaN(n) || n < 100 || n > 200) return "Must be between 100 and 200";
+          return !isNaN(n) && n >= 100 && n <= 200 ? true : "Must be 100–200";
         },
       });
       sellMinFloorPercent = parseInt(sellInput, 10);
     }
-  }
 
-  if (dealsEnabled) {
-    prompter.note(
+    // Bot setup
+    noteBox(
       "Create a bot with @BotFather on Telegram:\n" +
         "1. Send /newbot and follow the instructions\n" +
         "2. Copy the bot token\n" +
         "3. Enable inline mode: /setinline on the bot",
-      "Deals Bot"
+      "Deals Bot",
+      TON
     );
 
-    const tokenInput = await prompter.password({
+    const tokenInput = await password({
       message: "Bot token (from @BotFather)",
+      theme,
       validate: (value) => {
-        if (!value || !value.includes(":")) return "Invalid bot token format (expected id:hash)";
+        if (!value || !value.includes(":")) return "Invalid format (expected id:hash)";
+        return true;
       },
     });
 
-    // Validate token with Telegram API
-    spinner.start("Validating bot token...");
+    // Validate bot token
+    spinner.start(DIM("Validating bot token..."));
     try {
       const res = await fetchWithTimeout(`https://api.telegram.org/bot${tokenInput}/getMe`);
       const data = await res.json();
       if (!data.ok) {
-        spinner.stop("⚠ Bot token is invalid - skipping bot setup");
+        spinner.warn(DIM("Bot token is invalid — skipping bot setup"));
       } else {
         botToken = tokenInput;
         botUsername = data.result.username;
-        spinner.stop(`✓ Bot verified: @${botUsername}`);
+        spinner.succeed(DIM(`Bot verified: @${botUsername}`));
       }
     } catch {
-      spinner.stop("⚠ Could not validate bot token (network error) - saving anyway");
+      spinner.warn(DIM("Could not validate bot token (network error) — saving anyway"));
       botToken = tokenInput;
-      const usernameInput = await prompter.text({
+      const usernameInput = await input({
         message: "Bot username (without @)",
+        theme,
         validate: (value) => {
           if (!value || value.length < 3) return "Username too short";
+          return true;
         },
       });
       botUsername = usernameInput;
     }
+
+    extras.push("Deals");
   }
 
-  // TonAPI key (optional, for higher rate limits)
-  let tonapiKey: string | undefined;
-  const setupTonapi = await prompter.confirm({
-    message: "Add a TonAPI key? (optional, recommended)",
-    initialValue: false,
+  // TonAPI key
+  const setupTonapi = await confirm({
+    message: `Add a TonAPI key? ${DIM("(optional, recommended for 10x rate limits)")}`,
+    default: false,
+    theme,
   });
 
   if (setupTonapi) {
-    prompter.note(
+    noteBox(
       "Without key: 1 req/s (you will hit rate limits)\n" +
-        "With free key: 10 req/s (recommended)\n\n" +
+        "With free key: 10 req/s (recommended)\n" +
+        "\n" +
         "Open @tonapibot on Telegram → tap the mini app → generate a server key",
-      "TonAPI"
+      "TonAPI",
+      TON
     );
-    const keyInput = await prompter.text({
+    const keyInput = await input({
       message: "TonAPI key",
+      theme,
       validate: (v) => {
         if (!v || v.length < 10) return "Key too short";
+        return true;
       },
     });
     tonapiKey = keyInput;
+    extras.push("TonAPI");
   }
 
-  // Tavily API key (optional, for web search & page extraction)
-  let tavilyApiKey: string | undefined;
-  const setupTavily = await prompter.confirm({
-    message:
-      "Enable web search? (requires a free Tavily API key — 1,000 req/month, no credit card)",
-    initialValue: false,
+  // Tavily key
+  const setupTavily = await confirm({
+    message: `Enable web search? ${DIM("(free Tavily key — 1,000 req/month)")}`,
+    default: false,
+    theme,
   });
 
   if (setupTavily) {
-    prompter.note(
-      "Web search lets your agent search the internet and read web pages.\n\n" +
-        "To get your free API key (takes 30 seconds):\n\n" +
+    noteBox(
+      "Web search lets your agent search the internet and read web pages.\n" +
+        "\n" +
+        "To get your free API key (takes 30 seconds):\n" +
+        "\n" +
         "  1. Go to https://app.tavily.com/sign-in\n" +
         "  2. Create an account (email or Google/GitHub)\n" +
         "  3. Your API key is displayed on the dashboard\n" +
-        "     (starts with tvly-)\n\n" +
+        "     (starts with tvly-)\n" +
+        "\n" +
         "Free plan: 1,000 requests/month — no credit card required.",
-      "Tavily — Web Search API"
+      "Tavily — Web Search API",
+      TON
     );
-    const keyInput = await prompter.text({
+    const keyInput = await input({
       message: "Tavily API key (starts with tvly-)",
+      theme,
       validate: (v) => {
-        if (!v || !v.startsWith("tvly-")) return "Invalid key (should start with tvly-)";
+        if (!v || !v.startsWith("tvly-")) return "Should start with tvly-";
+        return true;
       },
     });
     tavilyApiKey = keyInput;
+    extras.push("Tavily");
   }
+
+  STEPS[4].value = extras.length ? extras.join(", ") : "defaults";
+
+  // ════════════════════════════════════════════════════════════════════
+  // Step 5: Wallet — generate / import / keep
+  // ════════════════════════════════════════════════════════════════════
+  redraw(5);
+
+  let wallet;
+  const existingWallet = walletExists() ? loadWallet() : null;
+
+  if (existingWallet) {
+    noteBox(`Existing wallet found: ${existingWallet.address}`, "TON Wallet", TON);
+
+    const walletAction = await select({
+      message: "A TON wallet already exists. What do you want to do?",
+      default: "keep",
+      theme,
+      choices: [
+        { value: "keep", name: "Keep existing", description: existingWallet.address },
+        {
+          value: "regenerate",
+          name: "Generate new",
+          description: "WARNING: old wallet will be lost",
+        },
+        { value: "import", name: "Import mnemonic", description: "Restore from 24-word seed" },
+      ],
+    });
+
+    if (walletAction === "keep") {
+      wallet = existingWallet;
+    } else if (walletAction === "import") {
+      const mnemonicInput = await input({
+        message: "Enter your 24-word mnemonic (space-separated)",
+        theme,
+        validate: (value = "") => {
+          const words = value.trim().split(/\s+/);
+          return words.length === 24 ? true : `Expected 24 words, got ${words.length}`;
+        },
+      });
+      spinner.start(DIM("Importing wallet..."));
+      wallet = await importWallet(mnemonicInput.trim().split(/\s+/));
+      saveWallet(wallet);
+      spinner.succeed(DIM(`Wallet imported: ${wallet.address}`));
+    } else {
+      spinner.start(DIM("Generating new TON wallet..."));
+      wallet = await generateWallet();
+      saveWallet(wallet);
+      spinner.succeed(DIM("New TON wallet generated"));
+    }
+  } else {
+    spinner.start(DIM("Generating TON wallet..."));
+    wallet = await generateWallet();
+    saveWallet(wallet);
+    spinner.succeed(DIM("TON wallet generated"));
+  }
+
+  // Display mnemonic for new/regenerated wallets
+  if (!existingWallet || wallet !== existingWallet) {
+    const W = FRAME_WIDTH;
+    const mnTitle = "  ⚠  BACKUP REQUIRED — WRITE DOWN THESE 24 WORDS";
+
+    console.log();
+    console.log(RED(`  ┌${"─".repeat(W)}┐`));
+    console.log(RED("  │") + RED.bold(padRight(mnTitle, W)) + RED("│"));
+    console.log(RED(`  ├${"─".repeat(W)}┤`));
+    console.log(RED("  │") + " ".repeat(W) + RED("│"));
+
+    const cols = 4;
+    const wordWidth = Math.max(10, Math.floor((W - 8) / cols) - 5);
+    const words = wallet.mnemonic;
+    for (let r = 0; r < 6; r++) {
+      const parts: string[] = [];
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const num = String(idx + 1).padStart(2, " ");
+        parts.push(`${DIM(num + ".")} ${WHITE(padRight(words[idx], wordWidth))}`);
+      }
+      const line = `  ${parts.join("  ")}`;
+      const visPad = W - stripAnsi(line).length;
+      console.log(RED("  │") + line + " ".repeat(Math.max(0, visPad)) + RED("│"));
+    }
+
+    console.log(RED("  │") + " ".repeat(W) + RED("│"));
+    console.log(
+      RED("  │") +
+        padRightAnsi(DIM("  These words allow you to recover your wallet."), W) +
+        RED("│")
+    );
+    console.log(
+      RED("  │") +
+        padRightAnsi(DIM("  Without them, you will lose access to your TON."), W) +
+        RED("│")
+    );
+    console.log(
+      RED("  │") + padRightAnsi(DIM("  Write them on paper and keep them safe."), W) + RED("│")
+    );
+    console.log(RED("  │") + " ".repeat(W) + RED("│"));
+    console.log(RED(`  └${"─".repeat(W)}┘`));
+    console.log();
+  }
+
+  STEPS[5].value = `${wallet.address.slice(0, 8)}...${wallet.address.slice(-4)}`;
+
+  // ════════════════════════════════════════════════════════════════════
+  // Step 6: Connect — save config + Telegram auth
+  // ════════════════════════════════════════════════════════════════════
+  redraw(6);
 
   // Build config
   const config: Config = {
@@ -622,77 +874,24 @@ ${blue}  ┌──────────────────────�
   };
 
   // Save config
-  spinner.start("Saving configuration...");
+  spinner.start(DIM("Saving configuration..."));
   const configYaml = YAML.stringify(config);
   writeFileSync(workspace.configPath, configYaml, "utf-8");
   chmodSync(workspace.configPath, 0o600);
-  spinner.stop("✓ Configuration saved");
-
-  // TON wallet setup
-  let wallet;
-  const existingWallet = walletExists() ? loadWallet() : null;
-
-  if (existingWallet) {
-    prompter.note(`Existing wallet found: ${existingWallet.address}`, "TON Wallet");
-
-    const walletAction = await prompter.select({
-      message: "A TON wallet already exists. What do you want to do?",
-      options: [
-        { value: "keep", label: "Keep existing", hint: `${existingWallet.address}` },
-        { value: "regenerate", label: "Generate new", hint: "WARNING: old wallet will be lost" },
-        { value: "import", label: "Import mnemonic", hint: "Restore from 24-word seed" },
-      ],
-      initialValue: "keep",
-    });
-
-    if (walletAction === "keep") {
-      wallet = existingWallet;
-    } else if (walletAction === "import") {
-      const mnemonicInput = await prompter.text({
-        message: "Enter your 24-word mnemonic (space-separated)",
-        validate: (value = "") => {
-          const words = value.trim().split(/\s+/);
-          if (words.length !== 24) return `Expected 24 words, got ${words.length}`;
-        },
-      });
-      spinner.start("Importing wallet...");
-      wallet = await importWallet(mnemonicInput.trim().split(/\s+/));
-      saveWallet(wallet);
-      spinner.stop(`✓ Wallet imported: ${wallet.address}`);
-    } else {
-      spinner.start("Generating new TON wallet...");
-      wallet = await generateWallet();
-      saveWallet(wallet);
-      spinner.stop("✓ New TON wallet generated");
-    }
-  } else {
-    spinner.start("Generating TON wallet...");
-    wallet = await generateWallet();
-    saveWallet(wallet);
-    spinner.stop("✓ TON wallet generated");
-  }
-
-  // Display mnemonic (only for new/regenerated wallets, not for kept ones)
-  if (!existingWallet || wallet !== existingWallet) {
-    prompter.note(
-      "BACKUP REQUIRED - WRITE DOWN THESE 24 WORDS:\n\n" +
-        wallet.mnemonic.join(" ") +
-        "\n\nThese words allow you to recover your wallet.\n" +
-        "Without them, you will lose access to your TON.\n" +
-        "Write them on paper and keep them safe.",
-      "Mnemonic Seed (24 words)"
-    );
-  }
+  spinner.succeed(DIM(`Configuration saved: ${workspace.configPath}`));
 
   // Telegram authentication
   let telegramConnected = false;
-  const connectNow = await prompter.confirm({
-    message: "Connect to Telegram now? (you'll need the verification code sent to your phone)",
-    initialValue: true,
+  const connectNow = await confirm({
+    message: `Connect to Telegram now? ${DIM("(verification code will be sent to your phone)")}`,
+    default: true,
+    theme,
   });
 
   if (connectNow) {
-    prompter.log("Connecting to Telegram... Check your phone for the verification code.");
+    console.log(
+      `\n  ${DIM("Connecting to Telegram... Check your phone for the verification code.")}`
+    );
     try {
       const sessionPath = join(TELETON_ROOT, "telegram_session.txt");
       const client = new TelegramUserClient({
@@ -705,54 +904,34 @@ ${blue}  ┌──────────────────────�
       const me = client.getMe();
       await client.disconnect();
       telegramConnected = true;
-      prompter.success(
-        `✓ Telegram connected as ${me?.firstName || ""}${me?.username ? ` (@${me.username})` : ""}`
-      );
+      const displayName = `${me?.firstName || ""}${me?.username ? ` (@${me.username})` : ""}`;
+      console.log(`  ${GREEN("✓")} ${DIM("Telegram connected as")} ${CYAN(displayName)}\n`);
+      STEPS[6].value = `Connected${me?.username ? ` (@${me.username})` : ""}`;
     } catch (err) {
       prompter.warn(
         `Telegram connection failed: ${err instanceof Error ? err.message : String(err)}\n` +
           "You can authenticate later when running: teleton start"
       );
+      STEPS[6].value = "Auth on first start";
     }
-  }
-
-  // Summary
-  prompter.note(
-    `Workspace: ${workspace.root}\n` +
-      `Config: ${workspace.configPath}\n` +
-      `Templates: SOUL.md, MEMORY.md, IDENTITY.md, USER.md\n` +
-      `Telegram: ${phone} (API ID: ${apiId})${telegramConnected ? " ✓ connected" : ""}\n` +
-      `Admin: User ID ${userId}\n` +
-      `Provider: ${providerMeta.displayName}\n` +
-      `Model: ${selectedModel}\n` +
-      `TON Wallet: ${wallet.address}\n` +
-      `Web Search: ${tavilyApiKey ? "Tavily ✓" : "disabled (no Tavily key)"}`,
-    "Setup complete"
-  );
-
-  if (telegramConnected) {
-    prompter.note(
-      "Next steps:\n\n" +
-        "1. Start the agent:\n" +
-        "   $ teleton start\n\n" +
-        "2. Send /boot as your first message to bootstrap\n" +
-        "   the agent's personality and get to know each other",
-      "Ready"
-    );
   } else {
-    prompter.note(
-      "Next steps:\n\n" +
-        "1. Start the agent:\n" +
-        "   $ teleton start\n\n" +
-        "2. On first launch, you will be asked for:\n" +
-        "   - Telegram verification code\n" +
-        "   - 2FA password (if enabled)\n\n" +
-        "3. Send a message to your Telegram account to test",
-      "Ready"
-    );
+    console.log(`\n  ${DIM("You can authenticate later when running: teleton start")}\n`);
+    STEPS[6].value = "Auth on first start";
   }
 
-  prompter.outro("Good luck!");
+  // ════════════════════════════════════════════════════════════════════
+  // Final summary
+  // ════════════════════════════════════════════════════════════════════
+  console.clear();
+  console.log();
+  console.log(wizardFrame(STEPS.length, STEPS));
+  console.log();
+  console.log(finalSummaryBox(STEPS, telegramConnected));
+  console.log();
+  console.log(
+    `  ${GREEN.bold("✔")} ${GREEN.bold("Setup complete!")} ${DIM(`Config saved to ${workspace.configPath}`)}`
+  );
+  console.log(`  ${TON.bold("⚡")} Good luck!\n`);
 }
 
 /**
@@ -859,5 +1038,5 @@ async function runNonInteractiveOnboarding(
   writeFileSync(workspace.configPath, configYaml, "utf-8");
   chmodSync(workspace.configPath, 0o600);
 
-  prompter.success(`✓ Configuration created: ${workspace.configPath}`);
+  prompter.success(`Configuration created: ${workspace.configPath}`);
 }
