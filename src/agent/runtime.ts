@@ -53,6 +53,7 @@ import type { ToolContext } from "./tools/types.js";
 import { appendToDailyLog, writeSessionEndSummary } from "../memory/daily-logs.js";
 import { saveSessionMemory } from "../session/memory-hook.js";
 import { verbose } from "../utils/logger.js";
+import { stringifyToon } from "../utils/toon.js";
 
 function isContextOverflowError(errorMessage?: string): boolean {
   if (!errorMessage) return false;
@@ -136,7 +137,7 @@ export class AgentRuntime {
 
     const provider = (config.agent.provider || "anthropic") as SupportedProvider;
     try {
-      const model = getProviderModel(provider, config.agent.model);
+      const model = getProviderModel(provider, config.agent.model, (config.agent as any).base_url);
       const ctx = model.contextWindow;
       this.compactionManager = new CompactionManager({
         enabled: true,
@@ -506,24 +507,21 @@ export class AgentRuntime {
             input: block.arguments,
           });
 
-          let resultText = JSON.stringify(result, null, 2);
+          // Serialize result with size limit to prevent context overflow
+          let resultText = stringifyToon(result);
           if (resultText.length > MAX_TOOL_RESULT_SIZE) {
             console.warn(`⚠️ Tool result too large (${resultText.length} chars), truncating...`);
             const data = result.data as Record<string, unknown> | undefined;
             if (data?.summary || data?.message) {
-              resultText = JSON.stringify(
-                {
-                  success: result.success,
-                  data: {
-                    summary: data.summary || data.message,
-                    _truncated: true,
-                    _originalSize: resultText.length,
-                    _message: "Full data truncated. Use limit parameter for smaller results.",
-                  },
+              resultText = stringifyToon({
+                success: result.success,
+                data: {
+                  summary: data.summary || data.message,
+                  _truncated: true,
+                  _originalSize: resultText.length,
+                  _message: "Full data truncated. Use limit parameter for smaller results.",
                 },
-                null,
-                2
-              );
+              });
             } else {
               resultText = resultText.slice(0, MAX_TOOL_RESULT_SIZE) + "\n...[TRUNCATED]";
             }

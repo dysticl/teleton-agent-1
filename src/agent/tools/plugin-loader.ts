@@ -1,5 +1,7 @@
 /**
- * Enhanced plugin loader — discovers and loads external plugins from ~/.teleton/plugins/
+ * Enhanced plugin loader — discovers and loads external plugins from:
+ * - ~/.teleton/plugins/
+ * - ./plugins (project-local, useful for development/WebUI)
  *
  * Supports a single unified format where everything is optional except `tools`:
  *
@@ -13,8 +15,8 @@
  */
 
 import { readdirSync, readFileSync, existsSync, statSync } from "fs";
-import { join } from "path";
-import { pathToFileURL } from "url";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 import { execFile } from "child_process";
 import { promisify } from "util";
 
@@ -77,7 +79,8 @@ export function adaptPlugin(
   entryName: string,
   config: Config,
   loadedModuleNames: string[],
-  sdkDeps: SDKDependencies
+  sdkDeps: SDKDependencies,
+  pluginBaseDir?: string
 ): PluginModuleWithHooks {
   let manifest: PluginManifest | null = null;
 
@@ -95,7 +98,9 @@ export function adaptPlugin(
   // Fallback: read version from manifest.json on disk (display names / object authors
   // don't pass Zod validation, but we still need the version for marketplace comparison)
   if (!manifest) {
-    const manifestPath = join(WORKSPACE_PATHS.PLUGINS_DIR, entryName, "manifest.json");
+    const manifestPath = pluginBaseDir
+      ? join(pluginBaseDir, "manifest.json")
+      : join(WORKSPACE_PATHS.PLUGINS_DIR, entryName, "manifest.json");
     try {
       if (existsSync(manifestPath)) {
         const diskManifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
@@ -367,41 +372,43 @@ export async function loadEnhancedPlugins(
   loadedModuleNames: string[],
   sdkDeps: SDKDependencies
 ): Promise<PluginModuleWithHooks[]> {
-  const pluginsDir = WORKSPACE_PATHS.PLUGINS_DIR;
+  const pluginDirs = getPluginSearchDirs();
+  if (pluginDirs.length === 0) return [];
 
-  if (!existsSync(pluginsDir)) {
-    return [];
-  }
-
-  const entries = readdirSync(pluginsDir);
   const modules: PluginModuleWithHooks[] = [];
   const loadedNames = new Set<string>();
 
   // Phase 1: Discover plugin paths (synchronous)
-  const pluginPaths: Array<{ entry: string; path: string }> = [];
+  const pluginPaths: Array<{ entry: string; path: string; baseDir?: string }> = [];
 
-  for (const entry of entries) {
-    if (entry === "data") continue;
+  for (const pluginsDir of pluginDirs) {
+    const entries = readdirSync(pluginsDir);
 
-    const entryPath = join(pluginsDir, entry);
-    let modulePath: string | null = null;
+    for (const entry of entries) {
+      if (entry === "data") continue;
 
-    try {
-      const stat = statSync(entryPath);
-      if (stat.isFile() && entry.endsWith(".js")) {
-        modulePath = entryPath;
-      } else if (stat.isDirectory()) {
-        const indexPath = join(entryPath, "index.js");
-        if (existsSync(indexPath)) {
-          modulePath = indexPath;
+      const entryPath = join(pluginsDir, entry);
+      let modulePath: string | null = null;
+      let baseDir: string | undefined;
+
+      try {
+        const stat = statSync(entryPath);
+        if (stat.isFile() && entry.endsWith(".js")) {
+          modulePath = entryPath;
+        } else if (stat.isDirectory()) {
+          const indexPath = join(entryPath, "index.js");
+          if (existsSync(indexPath)) {
+            modulePath = indexPath;
+            baseDir = entryPath;
+          }
         }
+      } catch {
+        continue;
       }
-    } catch {
-      continue;
-    }
 
-    if (modulePath) {
-      pluginPaths.push({ entry, path: modulePath });
+      if (modulePath) {
+        pluginPaths.push({ entry, path: modulePath, baseDir });
+      }
     }
   }
 
@@ -409,15 +416,15 @@ export async function loadEnhancedPlugins(
   await Promise.allSettled(
     pluginPaths
       .filter(({ path }) => path.endsWith("index.js"))
-      .map(({ entry }) => ensurePluginDeps(join(pluginsDir, entry), entry))
+      .map(({ entry, path }) => ensurePluginDeps(dirname(path), entry))
   );
 
   // Phase 2: Load plugins in parallel
   const loadResults = await Promise.allSettled(
-    pluginPaths.map(async ({ entry, path }) => {
+    pluginPaths.map(async ({ entry, path, baseDir }) => {
       const moduleUrl = pathToFileURL(path).href;
       const mod = (await import(moduleUrl)) as RawPluginExports;
-      return { entry, mod };
+      return { entry, mod, baseDir };
     })
   );
 
@@ -431,7 +438,7 @@ export async function loadEnhancedPlugins(
       continue;
     }
 
-    const { entry, mod } = result.value;
+    const { entry, mod, baseDir } = result.value;
 
     try {
       if (!mod.tools || (typeof mod.tools !== "function" && !Array.isArray(mod.tools))) {
@@ -439,7 +446,7 @@ export async function loadEnhancedPlugins(
         continue;
       }
 
-      const adapted = adaptPlugin(mod, entry, config, loadedModuleNames, sdkDeps);
+      const adapted = adaptPlugin(mod, entry, config, loadedModuleNames, sdkDeps, baseDir);
 
       if (loadedNames.has(adapted.name)) {
         console.warn(
@@ -459,4 +466,26 @@ export async function loadEnhancedPlugins(
   }
 
   return modules;
+}
+
+function getPluginSearchDirs(): string[] {
+  const dirs = [
+    WORKSPACE_PATHS.PLUGINS_DIR,
+    resolve(process.cwd(), "plugins"),
+    resolve(dirname(fileURLToPath(import.meta.url)), "../../../plugins"),
+  ];
+
+  const unique = new Set<string>();
+  for (const dir of dirs) {
+    if (!dir || unique.has(dir)) continue;
+    try {
+      if (existsSync(dir) && statSync(dir).isDirectory()) {
+        unique.add(dir);
+      }
+    } catch {
+      // ignore invalid directories
+    }
+  }
+
+  return [...unique];
 }

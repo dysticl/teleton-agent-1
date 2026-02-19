@@ -27,7 +27,7 @@ export interface ToolContext {
 export interface ToolResult {
   /** Whether the execution was successful */
   success: boolean;
-  /** Result data (will be serialized to JSON for the LLM) */
+  /** Result data (will be serialized to TOON/JSON-like structured text for the LLM) */
   data?: unknown;
   /** Error message if failed */
   error?: string;

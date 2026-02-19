@@ -1,6 +1,7 @@
 import type { TaskStore } from "../memory/agent/tasks.js";
 import type { TelegramBridge } from "./bridge.js";
 import { BATCH_TRIGGER_DELAY_MS } from "../constants/timeouts.js";
+import { parseJsonOrToon } from "../utils/toon.js";
 import { MAX_DEPENDENTS_PER_TASK } from "../constants/limits.js";
 
 /**
@@ -136,10 +137,10 @@ export class TaskDependencyResolver {
         let skipOnFailure = true;
         if (task.payload) {
           try {
-            const payload = JSON.parse(task.payload);
+            const payload = parseJsonOrToon<Record<string, unknown>>(task.payload);
             skipOnFailure = payload.skipOnParentFailure !== false; // Default true
           } catch (e) {
-            // Invalid JSON, use default
+            // Invalid payload, use default
           }
         }
 

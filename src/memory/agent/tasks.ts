@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { randomUUID } from "crypto";
+import { parseJsonOrToon } from "../../utils/toon.js";
 import type { TaskRow } from "../types/db-rows.js";
 
 export type TaskStatus = "pending" | "in_progress" | "done" | "failed" | "cancelled";
@@ -358,7 +359,7 @@ export class TaskStore {
     return rows.map((row) => {
       let parsedResult: any;
       try {
-        parsedResult = JSON.parse(row.result);
+        parsedResult = parseJsonOrToon(row.result);
       } catch (e) {
         parsedResult = row.result;
       }

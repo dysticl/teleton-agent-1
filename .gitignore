@@ -24,9 +24,26 @@ config.yaml
 # Sensitive data
 wallet.json
 *.db
+*.db-shm
+*.db-wal
 telegram_session.txt
 telegram-offset.json
 .reference/
 
+# API keys & secrets — never commit
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.secret
+
+# Plugin runtime data (may contain user secrets/configs)
+plugins/
+
 # TTS voice models (large binaries)
 piper-voices/
+
+# Local VPN configs/scripts
+Kirill-VPN/
+*.ovpn

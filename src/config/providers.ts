@@ -1,4 +1,11 @@
-export type SupportedProvider = "anthropic" | "openai" | "google" | "xai" | "groq" | "openrouter";
+export type SupportedProvider =
+  | "anthropic"
+  | "openai"
+  | "google"
+  | "xai"
+  | "groq"
+  | "openrouter"
+  | "deepseek";
 
 export interface ProviderMetadata {
   id: SupportedProvider;
@@ -85,6 +92,18 @@ const PROVIDER_REGISTRY: Record<SupportedProvider, ProviderMetadata> = {
     utilityModel: "google/gemini-2.5-flash-lite",
     toolLimit: 128,
     piAiProvider: "openrouter",
+  },
+  deepseek: {
+    id: "deepseek",
+    displayName: "DeepSeek",
+    envVar: "DEEPSEEK_API_KEY",
+    keyPrefix: "sk-",
+    keyHint: "sk-...",
+    consoleUrl: "https://platform.deepseek.com/api_keys",
+    defaultModel: "deepseek-chat",
+    utilityModel: "deepseek-chat",
+    toolLimit: 128,
+    piAiProvider: "deepseek",
   },
 };
 

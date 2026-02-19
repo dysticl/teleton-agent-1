@@ -1,6 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { Tool, ToolExecutor, ToolResult } from "../../types.js";
 import { Api } from "telegram";
+import { parseJsonOrToon } from "../../../../utils/toon.js";
 import { MAX_DEPENDENTS_PER_TASK } from "../../../../constants/limits.js";
 
 /**
@@ -59,16 +60,16 @@ export const telegramCreateScheduledTaskTool: Tool = {
     ),
     payload: Type.Optional(
       Type.String({
-        description: `JSON payload defining task execution. Two types:
+        description: `TOON/JSON payload defining task execution. Two types:
 
 1. Simple tool call (auto-executed, result fed to you):
-   {"type":"tool_call","tool":"ton_get_price","params":{},"condition":"price > 5"}
+    {type:"tool_call",tool:"ton_get_price",params:{},condition:"price > 5"}
 
 2. Complex agent task (you execute step-by-step):
-   {"type":"agent_task","instructions":"1. Check price\\n2. If > $5, swap 50 TON","context":{"chatId":"123"}}
+    {type:"agent_task",instructions:"1. Check price\\n2. If > $5, swap 50 TON",context:{chatId:"123"}}
 
 3. Skip on parent failure (continues even if parent fails):
-   {"type":"agent_task","instructions":"Send daily report","skipOnParentFailure":false}
+    {type:"agent_task",instructions:"Send daily report",skipOnParentFailure:false}
 
 If omitted, task is a simple reminder.`,
       })
@@ -141,8 +142,17 @@ export const telegramCreateScheduledTaskExecutor: ToolExecutor<CreateScheduledTa
     // Validate payload if provided
     if (payload) {
       try {
-        const parsed = JSON.parse(payload);
-        if (!parsed.type || !["tool_call", "agent_task"].includes(parsed.type)) {
+        const parsed = parseJsonOrToon(payload);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return {
+            success: false,
+            error: "Payload must be an object in TOON or JSON format",
+          };
+        }
+
+        const taskPayload = parsed as Record<string, unknown>;
+
+        if (!taskPayload.type || !["tool_call", "agent_task"].includes(String(taskPayload.type))) {
           return {
             success: false,
             error: 'Payload must have type "tool_call" or "agent_task"',
@@ -150,14 +160,14 @@ export const telegramCreateScheduledTaskExecutor: ToolExecutor<CreateScheduledTa
         }
 
         // Validate tool_call payload
-        if (parsed.type === "tool_call") {
-          if (!parsed.tool || typeof parsed.tool !== "string") {
+        if (taskPayload.type === "tool_call") {
+          if (!taskPayload.tool || typeof taskPayload.tool !== "string") {
             return {
               success: false,
               error: 'tool_call payload requires "tool" field (string)',
             };
           }
-          if (parsed.params !== undefined && typeof parsed.params !== "object") {
+          if (taskPayload.params !== undefined && typeof taskPayload.params !== "object") {
             return {
               success: false,
               error: 'tool_call payload "params" must be an object',
@@ -168,20 +178,20 @@ export const telegramCreateScheduledTaskExecutor: ToolExecutor<CreateScheduledTa
         }
 
         // Validate agent_task payload
-        if (parsed.type === "agent_task") {
-          if (!parsed.instructions || typeof parsed.instructions !== "string") {
+        if (taskPayload.type === "agent_task") {
+          if (!taskPayload.instructions || typeof taskPayload.instructions !== "string") {
             return {
               success: false,
               error: 'agent_task payload requires "instructions" field (string)',
             };
           }
-          if (parsed.instructions.length < 5) {
+          if (taskPayload.instructions.length < 5) {
             return {
               success: false,
               error: "Instructions too short (min 5 characters)",
             };
           }
-          if (parsed.context !== undefined && typeof parsed.context !== "object") {
+          if (taskPayload.context !== undefined && typeof taskPayload.context !== "object") {
             return {
               success: false,
               error: 'agent_task payload "context" must be an object',
@@ -191,7 +201,7 @@ export const telegramCreateScheduledTaskExecutor: ToolExecutor<CreateScheduledTa
       } catch (e) {
         return {
           success: false,
-          error: "Invalid JSON payload",
+          error: "Invalid TOON/JSON payload",
         };
       }
     }

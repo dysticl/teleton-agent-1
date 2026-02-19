@@ -123,3 +123,5 @@ webui:
 #   casino:
 #     min_bet: 0.1
 #     cooldown_seconds: 30
+#   miratext:
+#     api_key: "YOUR_MIRATEXT_API_KEY"  # From miratext.ru → Личный кабинет → Настройки → API

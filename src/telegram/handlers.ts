@@ -10,8 +10,6 @@ import { ToolRegistry } from "../agent/tools/registry.js";
 import {
   telegramSendMessageTool,
   telegramSendMessageExecutor,
-  telegramReactTool,
-  telegramReactExecutor,
 } from "../agent/tools/telegram/index.js";
 import type { ToolContext } from "../agent/tools/types.js";
 import { TELEGRAM_SEND_TOOLS } from "../constants/tools.js";

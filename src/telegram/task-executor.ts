@@ -7,14 +7,15 @@ import {
   SECONDS_PER_DAY,
   SECONDS_PER_HOUR,
 } from "../constants/limits.js";
+import { parseJsonOrToon, stringifyToon } from "../utils/toon.js";
 
 /**
- * Safely stringify and truncate JSON for prompt injection.
+ * Safely stringify and truncate structured data for prompt injection.
  * Returns truncated string with indicator if exceeds limit.
  */
-function truncateJson(data: any, maxChars: number = MAX_JSON_FIELD_CHARS): string {
+function truncateStructured(data: any, maxChars: number = MAX_JSON_FIELD_CHARS): string {
   try {
-    const str = JSON.stringify(data, null, 2);
+    const str = stringifyToon(data);
     if (str.length <= maxChars) {
       return str;
     }
@@ -69,7 +70,7 @@ export async function executeScheduledTask(
     return buildAgentPrompt(task, null, parentResults);
   }
 
-  const payload: TaskPayload = JSON.parse(task.payload);
+  const payload = parseJsonOrToon<TaskPayload>(task.payload);
 
   if (payload.type === "tool_call") {
     // Mode 1: Auto-execute tool, feed result to agent
@@ -144,7 +145,7 @@ function buildAgentPrompt(
     );
     for (const parent of parentResults) {
       prompt += `\n• Task: ${parent.description}\n`;
-      prompt += `  Result: ${truncateJson(parent.result, charsPerParent)}\n`;
+      prompt += `  Result: ${truncateStructured(parent.result, charsPerParent)}\n`;
     }
   }
 
@@ -160,14 +161,14 @@ function buildAgentPrompt(
     // Tool was executed
     prompt += `TOOL EXECUTED:\n`;
     prompt += `• Name: ${executionData.toolExecuted}\n`;
-    prompt += `• Params: ${truncateJson(executionData.toolParams, 2000)}\n`;
+    prompt += `• Params: ${truncateStructured(executionData.toolParams, 2000)}\n`;
     prompt += `\n`;
 
     if (executionData.toolError) {
       prompt += `❌ ERROR:\n${executionData.toolError}\n\n`;
       prompt += `→ The tool failed. Decide how to handle this error.\n`;
     } else {
-      prompt += `✅ RESULT:\n${truncateJson(executionData.toolResult)}\n\n`;
+      prompt += `✅ RESULT:\n${truncateStructured(executionData.toolResult)}\n\n`;
 
       if (executionData.condition) {
         prompt += `Condition: ${executionData.condition}\n`;
@@ -180,7 +181,7 @@ function buildAgentPrompt(
     prompt += `INSTRUCTIONS:\n${executionData.instructions}\n\n`;
 
     if (executionData.context) {
-      prompt += `Context: ${truncateJson(executionData.context, 4000)}\n\n`;
+      prompt += `Context: ${truncateStructured(executionData.context, 4000)}\n\n`;
     }
 
     prompt += `→ Execute these instructions step by step using available tools.\n`;

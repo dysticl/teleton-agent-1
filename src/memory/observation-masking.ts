@@ -1,5 +1,6 @@
 import type { Message, ToolResultMessage } from "@mariozechner/pi-ai";
 import type { ToolRegistry } from "../agent/tools/registry.js";
+import { parseJsonOrToon } from "../utils/toon.js";
 import { MASKING_KEEP_RECENT_COUNT } from "../constants/limits.js";
 
 export interface MaskingConfig {
@@ -51,10 +52,10 @@ export function maskOldToolResults(
       const content = toolMsg.content as Array<{ type: string; text?: string }>;
       const textBlock = content.find((c) => c.type === "text");
       if (textBlock?.text) {
-        const parsed = JSON.parse(textBlock.text);
-        if (parsed.data?.summary) {
+        const parsed = parseJsonOrToon<Record<string, any>>(textBlock.text);
+        if (parsed?.data?.summary) {
           summaryText = ` - ${parsed.data.summary}`;
-        } else if (parsed.data?.message) {
+        } else if (parsed?.data?.message) {
           summaryText = ` - ${parsed.data.message}`;
         }
       }

@@ -1,30 +1,44 @@
-<h1 align="center">Teleton Agent</h1>
+<h1 align="center">Teleton Agent (Modified Fork)</h1>
 
-<p align="center"><b>Autonomous AI agent platform for Telegram with native TON blockchain integration</b></p>
+<p align="center"><b>Custom fork of Teleton with DeepSeek support, TOON format, Miratext SEO plugin, Playwright market scraper, and enhanced plugin loading</b></p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen" alt="Node.js"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.7-blue" alt="TypeScript"></a>
-  <a href="https://teletonagent.dev"><img src="https://img.shields.io/badge/Website-teletonagent.dev-ff6600" alt="Website"></a>
-  <a href="https://deepwiki.com/TONresistor/teleton-agent"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://github.com/TONresistor/teleton-agent"><img src="https://img.shields.io/badge/upstream-TONresistor%2Fteleton--agent-blue" alt="Upstream"></a>
 </p>
 
 ---
 
-<p align="center">Teleton is an autonomous AI agent platform that operates as a real Telegram user account (not a bot). It thinks through an agentic loop with tool calling, remembers conversations across sessions with hybrid RAG, and natively integrates the TON blockchain: send crypto, swap on DEXs, bid on domains, verify payments - all from a chat message. It can schedule tasks to run autonomously at any time. It ships with 114 built-in tools, supports 6 LLM providers, and exposes a Plugin SDK so you can build your own tools on top of the platform.</p>
+> **This is a modified fork** of [TONresistor/teleton-agent](https://github.com/TONresistor/teleton-agent) (v0.6.0).
+> It includes custom features not available in the upstream version.
+
+### What's Different in This Fork
+
+| Feature | Upstream | This Fork |
+|---------|----------|-----------|
+| **LLM Providers** | 6 (Anthropic, OpenAI, Google, xAI, Groq, OpenRouter) | **7** — adds **DeepSeek** as native provider |
+| **Custom Base URL** | Not supported | `base_url` config option for any OpenAI-compatible endpoint |
+| **TOON Format** | Not available | Custom serialization format for structured agent data (tasks, observations) |
+| **Miratext Plugin** | Not included | SEO text analysis plugin (LSI words, competitor analysis, copywriting orders) |
+| **Plugin Loading** | `~/.teleton/plugins/` only | Also loads from `./plugins/` (project-local, for development) |
+| **Market Scraper** | Missing dependency | Includes Playwright + Chromium for gift market data scraping |
+| **Security** | Standard `.gitignore` | Hardened `.gitignore` — plugins, API keys, secrets files excluded |
+| **Tool Optimization** | All 66 Telegram tools enabled | Gift-focused: disabled stickers, polls, folders, stars, stories, profile (saves 21 tool slots) |
+| **Tool RAG** | Disabled by default | Enabled with `gift_*` always-include patterns for reliable gift tool selection |
 
 ### Key Highlights
 
-- **Full Telegram access** - Operates as a real user via MTProto (GramJS), not a limited bot
-- **Agentic loop** - Up to 5 iterations of tool calling per message, the agent thinks, acts, observes, and repeats
-- **Multi-Provider LLM** - Anthropic, OpenAI, Google Gemini, xAI Grok, Groq, OpenRouter
-- **TON Blockchain** - Built-in W5R1 wallet, send/receive TON & jettons, swap on STON.fi and DeDust, NFTs, DNS domains
-- **Persistent memory** - Hybrid RAG (sqlite-vec + FTS5), auto-compaction with AI summarization, daily logs
-- **114 built-in tools** - Messaging, media, blockchain, DEX trading, deals, DNS, journaling, and more
-- **Plugin SDK** - Extend the agent with custom tools, frozen SDK with isolated databases, secrets management, lifecycle hooks
-- **MCP Client** - Connect external tool servers (stdio/SSE) with 2 lines of YAML, no code, no rebuild
-- **Secure by design** - Prompt injection defense, sandboxed workspace, plugin isolation, wallet encryption
+- **Full Telegram access** — operates as a real user via MTProto (GramJS), not a limited bot
+- **Agentic loop** — up to 5 iterations of tool calling per message
+- **7 LLM Providers** — Anthropic, OpenAI, Google Gemini, xAI Grok, Groq, OpenRouter, **DeepSeek**
+- **TON Blockchain** — W5R1 wallet, send/receive TON & jettons, swap on STON.fi and DeDust, NFTs, DNS
+- **Persistent memory** — hybrid RAG (sqlite-vec + FTS5), auto-compaction, daily logs
+- **90+ built-in tools** — messaging, media, gifts, blockchain, DEX trading, deals, DNS, journaling
+- **Plugin SDK** — extend with custom tools, isolated databases, secrets management
+- **MCP Client** — connect external tool servers (stdio/SSE) with 2 lines of YAML
+- **WebUI Dashboard** — optional browser-based control panel (`--webui`)
 
 ---
 
@@ -34,7 +48,7 @@
 
 | Category      | Tools | Description                                                                                                        |
 | ------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
-| Telegram      | 66    | Messaging, media, chats, groups, polls, stickers, gifts, stars, stories, contacts, folders, profile, memory, tasks |
+| Telegram      | 48    | Messaging, media, chats, groups, gifts, contacts, memory, tasks (stickers, polls, folders, stars, stories, profile disabled) |
 | TON & Jettons | 15    | W5R1 wallet, send/receive TON & jettons, balances, prices, holders, history, charts, NFTs, smart DEX router        |
 | STON.fi DEX   | 5     | Swap, quote, search, trending tokens, liquidity pools                                                              |
 | DeDust DEX    | 5     | Swap, quote, pools, prices, token analytics (holders, top traders, buy/sell tax)                                   |
@@ -48,7 +62,7 @@
 
 | Capability              | Description                                                                                                                 |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Multi-Provider LLM**  | Switch between Anthropic, OpenAI, Google, xAI, Groq, OpenRouter with one config change                                      |
+| **Multi-Provider LLM**  | Switch between Anthropic, OpenAI, Google, xAI, Groq, OpenRouter, DeepSeek with one config change. Custom `base_url` supported |
 | **RAG + Hybrid Search** | Local ONNX embeddings (384d) or Voyage AI (512d/1024d) with FTS5 keyword + sqlite-vec cosine similarity, fused via RRF      |
 | **Auto-Compaction**     | AI-summarized context management prevents overflow, preserves key information in `memory/*.md` files                        |
 | **Observation Masking** | Compresses old tool results to one-line summaries, saving ~90% context window                                               |
@@ -67,92 +81,225 @@
 
 ## Prerequisites
 
-- **Node.js 20.0.0+** - [Download](https://nodejs.org/)
-- **LLM API Key** - One of: [Anthropic](https://console.anthropic.com/) (recommended), [OpenAI](https://platform.openai.com/), [Google](https://aistudio.google.com/), [xAI](https://console.x.ai/), [Groq](https://console.groq.com/), [OpenRouter](https://openrouter.ai/)
-- **Telegram Account** - Dedicated account recommended for security
-- **Telegram API Credentials** - From [my.telegram.org/apps](https://my.telegram.org/apps)
-- **Your Telegram User ID** - Message [@userinfobot](https://t.me/userinfobot)
-- **Bot Token** *(optional)* - From [@BotFather](https://t.me/BotFather) for inline bot features (deals)
+Before you start, you need to get a few things ready:
 
-> **Security Warning**: The agent will have full control over the Telegram account. Use a dedicated account, not your main one.
+| What | Where to get it | Notes |
+|------|-----------------|-------|
+| **Node.js 20+** | [nodejs.org](https://nodejs.org/) | Download the LTS version. Check with `node --version` |
+| **Git** | [git-scm.com](https://git-scm.com/) | Windows: use the installer, it includes Git Bash |
+| **LLM API Key** | See table below | At least one is required |
+| **Telegram Account** | A **dedicated** account recommended | The agent has full control over it |
+| **Telegram API ID + Hash** | [my.telegram.org/apps](https://my.telegram.org/apps) | Log in with the dedicated account |
+| **Your Telegram User ID** | [@userinfobot](https://t.me/userinfobot) on Telegram | Send any message, it replies with your ID |
+
+### Where to Get an LLM API Key
+
+| Provider | Free Tier? | Console | Key Format |
+|----------|-----------|---------|------------|
+| **DeepSeek** | Very cheap ($0.14/M tokens) | [platform.deepseek.com](https://platform.deepseek.com/api_keys) | `sk-...` |
+| **Google Gemini** | Free tier available | [aistudio.google.com](https://aistudio.google.com/) | `AIza...` |
+| **Groq** | Free tier (rate-limited) | [console.groq.com](https://console.groq.com/) | `gsk_...` |
+| **OpenRouter** | Pay-per-use, many models | [openrouter.ai](https://openrouter.ai/) | `sk-or-...` |
+| **Anthropic** | No free tier | [console.anthropic.com](https://console.anthropic.com/) | `sk-ant-...` |
+| **OpenAI** | No free tier | [platform.openai.com](https://platform.openai.com/) | `sk-...` |
+| **xAI (Grok)** | No free tier | [console.x.ai](https://console.x.ai/) | `xai-...` |
+
+> **Tip for getting started cheap**: DeepSeek or Groq are the cheapest options. Google Gemini has a free tier.
+
+> **Security Warning**: The agent will have full control over the Telegram account. **Never use your main Telegram account.** Create a new one.
 
 ---
 
-## Quick Start
+## Installation (Step-by-Step)
 
-### 1. Installation
+### Windows
 
-**npm (recommended):**
+1. **Install Node.js 20+**
+   - Download from [nodejs.org](https://nodejs.org/) (LTS version)
+   - Run the installer, check "Add to PATH"
+   - Open **PowerShell** and verify:
+     ```powershell
+     node --version
+     # Should show v20.x.x or higher
+     ```
+
+2. **Install Git**
+   - Download from [git-scm.com](https://git-scm.com/download/win)
+   - Run the installer with default settings
+   - Verify:
+     ```powershell
+     git --version
+     ```
+
+3. **Clone this repository**
+   ```powershell
+   cd ~\Desktop
+   git clone https://github.com/dysticl/teleton-agent-1.git
+   cd teleton-agent-1
+   ```
+
+4. **Install dependencies**
+   ```powershell
+   npm install
+   ```
+
+5. **Build the project**
+   ```powershell
+   npm run build
+   ```
+
+6. **Install globally** (so `teleton` command works from anywhere)
+   ```powershell
+   npm link
+   ```
+
+7. **Run setup**
+   ```powershell
+   teleton setup
+   ```
+   The wizard will ask for:
+   - LLM provider + API key
+   - Telegram API ID, API Hash, phone number
+   - Verification code (sent to your Telegram)
+   - Your Telegram User ID (for admin rights)
+
+8. **Start the agent**
+   ```powershell
+   teleton start
+   ```
+   With WebUI dashboard:
+   ```powershell
+   teleton start --webui
+   ```
+
+### macOS / Linux
+
 ```bash
-npm install -g teleton@latest
-```
+# 1. Clone
+git clone https://github.com/dysticl/teleton-agent-1.git
+cd teleton-agent-1
 
-**Docker:**
-```bash
-docker run -it -v ~/.teleton:/data ghcr.io/tonresistor/teleton-agent:latest setup
-```
-
-**From source (development):**
-```bash
-git clone https://github.com/TONresistor/teleton-agent.git
-cd teleton-agent
+# 2. Install + build
 npm install && npm run build
-```
 
-### 2. Setup
+# 3. Install globally
+npm link
 
-```bash
+# 4. Setup (interactive wizard)
 teleton setup
+
+# 5. Start
+teleton start
+
+# With WebUI:
+teleton start --webui
 ```
 
-The wizard will configure:
-- LLM provider selection (Anthropic, OpenAI, Google, xAI, Groq, OpenRouter)
-- Telegram authentication (API credentials, phone, login code)
-- Access policies (DM/group response rules)
-- Admin user ID
-- TON wallet generation (W5R1 with 24-word mnemonic)
-- Workspace initialization (SOUL.md, STRATEGY.md, SECURITY.md, MEMORY.md)
+---
 
-Configuration files created:
-- `~/.teleton/config.yaml` - Main configuration
-- `~/.teleton/wallet.json` - TON wallet (backup mnemonic securely)
-- `~/.teleton/memory.db` - SQLite database (WAL mode, sqlite-vec, FTS5)
-- `~/.teleton/workspace/` - Sandboxed file storage
+## Where Do API Keys Go?
 
-### 3. Start
+All keys are stored in `~/.teleton/config.yaml` (created by `teleton setup`).
 
-If setup completed without errors, your agent is ready to go:
+| OS | Config location |
+|----|-----------------|
+| **Windows** | `C:\Users\YOUR_NAME\.teleton\config.yaml` |
+| **macOS** | `/Users/YOUR_NAME/.teleton/config.yaml` |
+| **Linux** | `/home/YOUR_NAME/.teleton/config.yaml` |
+
+### config.yaml Structure
+
+After running `teleton setup`, the file looks like this. You can edit it manually later:
+
+```yaml
+agent:
+  provider: "deepseek"                # anthropic | openai | google | xai | groq | openrouter | deepseek
+  api_key: "sk-your-key-here"         # Your LLM API key
+  # base_url: "https://api.deepseek.com"  # Custom API endpoint (optional)
+  model: "deepseek-chat"              # Model ID
+  max_tokens: 4096
+  temperature: 0.7
+  max_agentic_iterations: 5
+
+telegram:
+  api_id: 12345678                    # From my.telegram.org/apps
+  api_hash: "your_api_hash_here"      # From my.telegram.org/apps
+  phone: "+491701234567"              # Phone number with country code
+  admin_ids: [123456789]              # Your Telegram User ID
+  owner_name: "Your Name"
+  owner_username: "your_telegram_username"
+  dm_policy: "open"                   # open | allowlist | pairing | disabled
+  group_policy: "open"                # open | allowlist | disabled
+  require_mention: true               # In groups, only respond when @mentioned
+
+# Optional keys — add them later if needed:
+# tavily_api_key: "tvly-..."          # For web search (tavily.com)
+# tonapi_key: "..."                   # For TON blockchain (higher rate limits)
+
+# WebUI dashboard (optional):
+# webui:
+#   enabled: true
+#   port: 7777
+```
+
+### Setting Keys via CLI
+
+You can also set keys without editing the file:
 
 ```bash
-teleton start
+teleton config set tavily_api_key
+teleton config set tonapi_key
+teleton config list           # Show all configured keys
 ```
 
-### 4. Verify
+### Environment Variables
 
-Send a message to your agent on Telegram:
+You can also pass keys via environment variables (useful for Docker):
+
+| Variable | Description |
+|----------|-------------|
+| `TELETON_API_KEY` | LLM API key (overrides config) |
+| `TELETON_TG_API_ID` | Telegram API ID |
+| `TELETON_TG_API_HASH` | Telegram API Hash |
+| `TELETON_TG_PHONE` | Phone number |
+| `TELETON_TAVILY_API_KEY` | Tavily web search key |
+| `TELETON_TONAPI_KEY` | TonAPI key |
+| `TELETON_WEBUI_ENABLED` | Enable WebUI (`true` / `false`) |
+| `TELETON_WEBUI_PORT` | WebUI port (default: `7777`) |
+| `TELETON_HOME` | Data directory (default: `~/.teleton`) |
+
+---
+
+## Verify It Works
+
+After `teleton start`, send messages to the agent on Telegram:
 
 ```
 You: /ping
 Agent: Pong! I'm alive.
 
 You: /status
-Agent: [Displays uptime, model, tool count, wallet balance]
+Agent: [Shows uptime, model, tool count, wallet balance]
+
+You: /help
+Agent: [Lists all admin commands]
 ```
 
-> **Need more details?** See [GETTING_STARTED.md](GETTING_STARTED.md) for the full guide - admin commands, troubleshooting, workspace templates, plugins, and more.
+> **First time?** Send `/boot` to run the bootstrap template and let the agent introduce itself.
 
 ---
 
 ## Configuration
 
-The `teleton setup` wizard generates a fully configured `~/.teleton/config.yaml` file. Manual editing is only necessary if you want to adjust settings after the initial setup.
+The `teleton setup` wizard generates `~/.teleton/config.yaml`. Manual editing is only needed to change settings afterwards.
 
 ```yaml
 agent:
-  provider: "anthropic"              # anthropic | openai | google | xai | groq | openrouter
-  api_key: "sk-ant-api03-..."
-  model: "claude-opus-4-5-20251101"
-  utility_model: "claude-3-5-haiku-20241022"  # for summarization, compaction, vision
+  provider: "deepseek"               # anthropic | openai | google | xai | groq | openrouter | deepseek
+  api_key: "sk-..."
+  # base_url: "https://api.deepseek.com"  # Custom API endpoint (this fork only)
+  model: "deepseek-chat"
+  utility_model: "deepseek-chat"     # for summarization, compaction, vision
   max_agentic_iterations: 5
 
 telegram:
@@ -383,7 +530,7 @@ All admin commands support `/`, `!`, or `.` prefix:
 
 | Layer | Technology |
 |-------|------------|
-| LLM | Multi-provider via [pi-ai](https://github.com/mariozechner/pi-ai) (Anthropic, OpenAI, Google, xAI, Groq, OpenRouter) |
+| LLM | Multi-provider via [pi-ai](https://github.com/mariozechner/pi-ai) (Anthropic, OpenAI, Google, xAI, Groq, OpenRouter) + DeepSeek (custom) |
 | Telegram Userbot | [GramJS](https://gram.js.org/) (MTProto) |
 | Inline Bot | [Grammy](https://grammy.dev/) (Bot API, for deals) |
 | Blockchain | [TON SDK](https://github.com/ton-org/ton) (W5R1 wallet) |
@@ -406,12 +553,12 @@ src/
 │   ├── runtime.ts          # Agentic loop (5 iterations, tool calling, masking, compaction)
 │   ├── client.ts           # Multi-provider LLM client
 │   └── tools/              # 114 built-in tools
-│       ├── register-all.ts # Central tool registration (8 categories, 109 tools)
-│       ├── registry.ts     # Tool registry, scope filtering, provider limits
+│       ├── register-all.ts # Central tool registration (8 categories, ~90 tools)
+│       ├── registry.ts     # Tool registry, scope filtering, provider limits, Tool RAG
 │       ├── module-loader.ts    # Built-in module loading (deals → +5 tools)
 │       ├── plugin-loader.ts    # External plugin discovery, validation, hot-reload
 │       ├── mcp-loader.ts       # MCP client (stdio/SSE), tool discovery, lifecycle
-│       ├── telegram/       # Telegram operations (66 tools)
+│       ├── telegram/       # Telegram operations (48 tools, gift-focused)
 │       ├── ton/            # TON blockchain + jettons + DEX router (15 tools)
 │       ├── stonfi/         # STON.fi DEX (5 tools)
 │       ├── dedust/         # DeDust DEX (5 tools)
@@ -460,7 +607,7 @@ src/
 │   └── loader.ts           # 10 sections: soul + security + strategy + memory + context + ...
 ├── config/                 # Configuration
 │   ├── schema.ts           # Zod schemas + validation
-│   └── providers.ts        # Multi-provider LLM registry (6 providers)
+│   └── providers.ts        # Multi-provider LLM registry (7 providers, incl. DeepSeek)
 ├── webui/                  # Optional web dashboard
 │   ├── server.ts           # Hono server, auth middleware, static serving
 │   └── routes/             # 11 API route groups (status, tools, logs, memory, soul, plugins, mcp, tasks, workspace, config, marketplace)
@@ -506,15 +653,77 @@ Do not open public issues for security vulnerabilities. Contact maintainers (t.m
 
 ---
 
+## Troubleshooting
+
+### Windows: `node-gyp` errors during `npm install`
+
+Some native modules (like `better-sqlite3`) need a C++ compiler:
+
+```powershell
+# Install Windows Build Tools (run PowerShell as Administrator)
+npm install -g windows-build-tools
+# OR install Visual Studio Build Tools manually from:
+# https://visualstudio.microsoft.com/visual-cpp-build-tools/
+```
+
+Then retry `npm install`.
+
+### Telegram session expired
+
+```bash
+# Delete old session and restart (will ask for verification code again)
+# Windows:
+del %USERPROFILE%\.teleton\telegram_session.txt
+
+# macOS/Linux:
+rm ~/.teleton/telegram_session.txt
+
+# Then restart:
+teleton start
+```
+
+### `ERR_MODULE_NOT_FOUND: playwright`
+
+The market scraper needs Playwright + Chromium:
+
+```bash
+npm install playwright
+npx playwright install chromium
+```
+
+### `error: unknown option '--webui'`
+
+You need to rebuild after pulling updates:
+
+```bash
+npm run build
+```
+
+### Agent not responding in groups
+
+- Check `require_mention: true` in config — you must @mention the agent
+- Check `group_policy` — if `allowlist`, add the group ID to `group_allow_from`
+- Try `/resume` — the agent might be paused
+
+### Health check
+
+```bash
+teleton doctor
+```
+
+---
+
 ## Development
 
 ### Setup
 
 ```bash
-git clone https://github.com/TONresistor/teleton-agent.git
-cd teleton-agent
+git clone https://github.com/dysticl/teleton-agent-1.git
+cd teleton-agent-1
 npm install
-npm run setup
+npm run build
+npm link
+teleton setup
 npm run dev  # Watch mode with auto-restart
 ```
 
@@ -644,9 +853,22 @@ Full documentation is available in the [`docs/`](docs/) directory:
 
 ---
 
+## Syncing with Upstream
+
+This fork tracks [TONresistor/teleton-agent](https://github.com/TONresistor/teleton-agent). To pull upstream updates:
+
+```bash
+git remote add upstream https://github.com/TONresistor/teleton-agent.git
+git fetch upstream
+git merge upstream/main --no-ff -m "merge: sync with upstream"
+npm install && npm run build
+```
+
+---
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the upstream guide.
 
 1. Fork the repository
 2. Create a feature branch from `dev`
@@ -688,7 +910,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/TONresistor/teleton-agent/issues)
-- **Channel**: [@ResistanceTools](https://t.me/ResistanceTools)
-- **Group Chat**: [@ResistanceForum](https://t.me/ResistanceForum)
-- **Contact**: [@zkproof](https://t.me/zkproof)
+- **This fork**: [GitHub Issues](https://github.com/dysticl/teleton-agent-1/issues)
+- **Upstream**: [TONresistor/teleton-agent](https://github.com/TONresistor/teleton-agent)
+- **Upstream Channel**: [@ResistanceTools](https://t.me/ResistanceTools)
+- **Upstream Group Chat**: [@ResistanceForum](https://t.me/ResistanceForum)
