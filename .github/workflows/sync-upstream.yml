@@ -1,0 +1,66 @@
+name: Sync upstream
+
+# Runs daily and on manual trigger
+on:
+  schedule:
+    - cron: "0 6 * * *" # Every day at 06:00 UTC
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/TONresistor/teleton-agent.git
+          git fetch upstream main
+
+      - name: Check for new upstream commits
+        id: check
+        run: |
+          BEHIND=$(git rev-list --count main..upstream/main)
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+          echo "Upstream is $BEHIND commits ahead"
+
+      - name: Rebase on upstream
+        if: steps.check.outputs.behind != '0'
+        id: rebase
+        run: |
+          git rebase upstream/main
+          echo "status=success" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Handle rebase conflict — open PR instead
+        if: steps.check.outputs.behind != '0' && steps.rebase.outputs.status != 'success'
+        run: |
+          git rebase --abort
+          git checkout -b upstream-update-$(date +%Y%m%d)
+          git merge upstream/main --no-edit || true
+          git add -A
+          git commit -m "merge: update from upstream $(date +%Y-%m-%d)" --allow-empty
+          git push origin HEAD
+          gh pr create \
+            --title "⚠️ Upstream update needs manual merge ($(date +%Y-%m-%d))" \
+            --body "Automatic rebase failed due to conflicts. Please resolve manually." \
+            --base main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push rebased main
+        if: steps.check.outputs.behind != '0' && steps.rebase.outputs.status == 'success'
+        run: git push origin main --force-with-lease
