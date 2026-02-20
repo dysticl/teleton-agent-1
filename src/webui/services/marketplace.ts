@@ -11,10 +11,9 @@ import { adaptPlugin, ensurePluginDeps } from "../../agent/tools/plugin-loader.j
 import type { ToolRegistry } from "../../agent/tools/registry.js";
 import type { MarketplaceDeps, RegistryEntry, MarketplacePlugin } from "../types.js";
 
-const REGISTRY_URL =
-  "https://raw.githubusercontent.com/TONresistor/teleton-plugins/main/registry.json";
-const PLUGIN_BASE_URL = "https://raw.githubusercontent.com/TONresistor/teleton-plugins/main";
-const GITHUB_API_BASE = "https://api.github.com/repos/TONresistor/teleton-plugins/contents";
+const REGISTRY_URL = "https://raw.githubusercontent.com/dysticl/teleton-plugins/main/registry.json";
+const PLUGIN_BASE_URL = "https://raw.githubusercontent.com/dysticl/teleton-plugins/main";
+const GITHUB_API_BASE = "https://api.github.com/repos/dysticl/teleton-plugins/contents";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const PLUGINS_DIR = WORKSPACE_PATHS.PLUGINS_DIR;
 

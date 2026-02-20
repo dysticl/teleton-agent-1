@@ -6,12 +6,12 @@
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen" alt="Node.js"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.7-blue" alt="TypeScript"></a>
-  <a href="https://github.com/TONresistor/teleton-agent"><img src="https://img.shields.io/badge/upstream-TONresistor%2Fteleton--agent-blue" alt="Upstream"></a>
+  <a href="https://github.com/dysticl/teleton-agent"><img src="https://img.shields.io/badge/upstream-dysticl%2Fteleton--agent-blue" alt="Upstream"></a>
 </p>
 
 ---
 
-> **This is a modified fork** of [TONresistor/teleton-agent](https://github.com/TONresistor/teleton-agent) (v0.6.0).
+> **This is a modified fork** of [dysticl/teleton-agent](https://github.com/dysticl/teleton-agent) (v0.6.0).
 > It includes custom features not available in the upstream version.
 
 ### What's Different in This Fork
@@ -94,7 +94,7 @@ teleton setup
 ```powershell
 # Клонировать репозиторий с плагинами (временно)
 cd ~\Desktop
-git clone https://github.com/TONresistor/teleton-plugins.git
+git clone https://github.com/dysticl/teleton-plugins.git
 
 # Создать папку для плагинов
 mkdir -Force "$HOME\.teleton\plugins"
@@ -841,7 +841,7 @@ npm run format      # Prettier
 
 ### Plugins
 
-Plugins extend the agent with custom tools. Drop a `.js` file or folder in `~/.teleton/plugins/` - loaded at startup, hot-reloaded in dev mode, no rebuild needed. See [official example plugins](https://github.com/TONresistor/teleton-plugins) for complete working examples.
+Plugins extend the agent with custom tools. Drop a `.js` file or folder in `~/.teleton/plugins/` - loaded at startup, hot-reloaded in dev mode, no rebuild needed. See [official example plugins](https://github.com/dysticl/teleton-plugins) for complete working examples.
 
 ```
 ~/.teleton/plugins/
@@ -952,10 +952,10 @@ Full documentation is available in the [`docs/`](docs/) directory:
 
 ## Syncing with Upstream
 
-This fork tracks [TONresistor/teleton-agent](https://github.com/TONresistor/teleton-agent). To pull upstream updates:
+This fork tracks [dysticl/teleton-agent](https://github.com/dysticl/teleton-agent). To pull upstream updates:
 
 ```bash
-git remote add upstream https://github.com/TONresistor/teleton-agent.git
+git remote add upstream https://github.com/dysticl/teleton-agent.git
 git fetch upstream
 git merge upstream/main --no-ff -m "merge: sync with upstream"
 npm install && npm run build
@@ -977,8 +977,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the upstream guide.
 
 ## Contributors
 
-<a href="https://github.com/TONresistor/teleton-agent/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=TONresistor/teleton-agent" />
+<a href="https://github.com/dysticl/teleton-agent/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=dysticl/teleton-agent" />
 </a>
 
 ---
@@ -1008,6 +1008,6 @@ MIT License - See [LICENSE](LICENSE) for details.
 ## Support
 
 - **This fork**: [GitHub Issues](https://github.com/dysticl/teleton-agent/issues)
-- **Upstream**: [TONresistor/teleton-agent](https://github.com/TONresistor/teleton-agent)
+- **Upstream**: [dysticl/teleton-agent](https://github.com/dysticl/teleton-agent)
 - **Upstream Channel**: [@ResistanceTools](https://t.me/ResistanceTools)
 - **Upstream Group Chat**: [@ResistanceForum](https://t.me/ResistanceForum)

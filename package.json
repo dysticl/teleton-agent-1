@@ -19,12 +19,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/TONresistor/teleton-agent.git"
+    "url": "https://github.com/dysticl/teleton-agent.git"
   },
   "bugs": {
-    "url": "https://github.com/TONresistor/teleton-agent/issues"
+    "url": "https://github.com/dysticl/teleton-agent/issues"
   },
-  "homepage": "https://github.com/TONresistor/teleton-agent#readme",
+  "homepage": "https://github.com/dysticl/teleton-agent#readme",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

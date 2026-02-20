@@ -224,27 +224,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Professional distribution (npm, Docker, CI/CD)
 - Pre-commit hooks and linting infrastructure
 
-[0.5.2]: https://github.com/TONresistor/teleton-agent/compare/v0.5.1...v0.5.2
-[0.5.1]: https://github.com/TONresistor/teleton-agent/compare/v0.5.0...v0.5.1
-[0.5.0]: https://github.com/TONresistor/teleton-agent/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/TONresistor/teleton-agent/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/TONresistor/teleton-agent/compare/v0.2.5...v0.3.0
-[0.2.5]: https://github.com/TONresistor/teleton-agent/compare/v0.2.4...v0.2.5
-[0.2.4]: https://github.com/TONresistor/teleton-agent/compare/v0.2.3...v0.2.4
-[0.2.3]: https://github.com/TONresistor/teleton-agent/compare/v0.2.2...v0.2.3
-[0.2.2]: https://github.com/TONresistor/teleton-agent/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/TONresistor/teleton-agent/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/TONresistor/teleton-agent/compare/v0.1.21...v0.2.0
-[0.1.21]: https://github.com/TONresistor/teleton-agent/compare/v0.1.20...v0.1.21
-[0.1.20]: https://github.com/TONresistor/teleton-agent/compare/v0.1.19...v0.1.20
-[0.1.19]: https://github.com/TONresistor/teleton-agent/compare/v0.1.18...v0.1.19
-[0.1.18]: https://github.com/TONresistor/teleton-agent/compare/v0.1.17...v0.1.18
-[0.1.17]: https://github.com/TONresistor/teleton-agent/compare/v0.1.16...v0.1.17
-[0.1.16]: https://github.com/TONresistor/teleton-agent/compare/v0.1.15...v0.1.16
-[0.1.15]: https://github.com/TONresistor/teleton-agent/compare/v0.1.14...v0.1.15
-[0.1.10 - 0.1.14]: https://github.com/TONresistor/teleton-agent/compare/v0.1.9...v0.1.14
-[0.1.9]: https://github.com/TONresistor/teleton-agent/compare/v0.1.8...v0.1.9
-[0.1.8]: https://github.com/TONresistor/teleton-agent/compare/v0.1.7...v0.1.8
-[0.1.7]: https://github.com/TONresistor/teleton-agent/compare/v0.1.6...v0.1.7
-[0.1.6]: https://github.com/TONresistor/teleton-agent/compare/v0.1.4...v0.1.6
-[0.1.4 and earlier]: https://github.com/TONresistor/teleton-agent/releases/tag/v0.1.4
+[0.5.2]: https://github.com/dysticl/teleton-agent/compare/v0.5.1...v0.5.2
+[0.5.1]: https://github.com/dysticl/teleton-agent/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/dysticl/teleton-agent/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/dysticl/teleton-agent/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/dysticl/teleton-agent/compare/v0.2.5...v0.3.0
+[0.2.5]: https://github.com/dysticl/teleton-agent/compare/v0.2.4...v0.2.5
+[0.2.4]: https://github.com/dysticl/teleton-agent/compare/v0.2.3...v0.2.4
+[0.2.3]: https://github.com/dysticl/teleton-agent/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/dysticl/teleton-agent/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/dysticl/teleton-agent/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/dysticl/teleton-agent/compare/v0.1.21...v0.2.0
+[0.1.21]: https://github.com/dysticl/teleton-agent/compare/v0.1.20...v0.1.21
+[0.1.20]: https://github.com/dysticl/teleton-agent/compare/v0.1.19...v0.1.20
+[0.1.19]: https://github.com/dysticl/teleton-agent/compare/v0.1.18...v0.1.19
+[0.1.18]: https://github.com/dysticl/teleton-agent/compare/v0.1.17...v0.1.18
+[0.1.17]: https://github.com/dysticl/teleton-agent/compare/v0.1.16...v0.1.17
+[0.1.16]: https://github.com/dysticl/teleton-agent/compare/v0.1.15...v0.1.16
+[0.1.15]: https://github.com/dysticl/teleton-agent/compare/v0.1.14...v0.1.15
+[0.1.10 - 0.1.14]: https://github.com/dysticl/teleton-agent/compare/v0.1.9...v0.1.14
+[0.1.9]: https://github.com/dysticl/teleton-agent/compare/v0.1.8...v0.1.9
+[0.1.8]: https://github.com/dysticl/teleton-agent/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/dysticl/teleton-agent/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/dysticl/teleton-agent/compare/v0.1.4...v0.1.6
+[0.1.4 and earlier]: https://github.com/dysticl/teleton-agent/releases/tag/v0.1.4

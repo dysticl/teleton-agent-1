@@ -16,23 +16,23 @@ Thank you for your interest in contributing to Teleton Agent. This guide covers 
 
 ## Reporting Bugs
 
-Open a [GitHub Issue](https://github.com/TONresistor/teleton-agent/issues/new?template=bug_report.md) using the bug report template. Include:
+Open a [GitHub Issue](https://github.com/dysticl/teleton-agent/issues/new?template=bug_report.md) using the bug report template. Include:
 
 - A clear description of the problem
 - Steps to reproduce
 - Expected vs. actual behavior
 - Environment details (OS, Node.js version, teleton version, LLM provider)
 
-Search [existing issues](https://github.com/TONresistor/teleton-agent/issues) first to avoid duplicates.
+Search [existing issues](https://github.com/dysticl/teleton-agent/issues) first to avoid duplicates.
 
 ## Suggesting Features
 
-Open a [GitHub Issue](https://github.com/TONresistor/teleton-agent/issues/new?template=feature_request.md) using the feature request template. Describe the use case, your proposed solution, and any alternatives you considered.
+Open a [GitHub Issue](https://github.com/dysticl/teleton-agent/issues/new?template=feature_request.md) using the feature request template. Describe the use case, your proposed solution, and any alternatives you considered.
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/TONresistor/teleton-agent.git
+git clone https://github.com/dysticl/teleton-agent.git
 cd teleton-agent
 npm install
 npm run dev
@@ -136,4 +136,4 @@ Plugins are loaded from `~/.teleton/plugins/` at startup -- no rebuild required.
 
 ---
 
-Questions? Reach out on Telegram: [@ResistanceForum](https://t.me/ResistanceForum) or open a [discussion](https://github.com/TONresistor/teleton-agent/issues).
+Questions? Reach out on Telegram: [@ResistanceForum](https://t.me/ResistanceForum) or open a [discussion](https://github.com/dysticl/teleton-agent/issues).

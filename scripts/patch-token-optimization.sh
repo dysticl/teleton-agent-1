@@ -6,7 +6,7 @@ set -euo pipefail
 # Reduces input token usage by ~80-90% per message
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/TONresistor/teleton-agent/main/scripts/patch-token-optimization.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/dysticl/teleton-agent/main/scripts/patch-token-optimization.sh | bash
 #
 # Or locally:
 #   bash scripts/patch-token-optimization.sh
@@ -62,7 +62,7 @@ fi
 
 if [ -z "$TELETON_DIR" ]; then
   error "Could not find teleton installation. Install it first:
-  curl -fsSL https://raw.githubusercontent.com/TONresistor/teleton-agent/main/install.sh | bash"
+  curl -fsSL https://raw.githubusercontent.com/dysticl/teleton-agent/main/install.sh | bash"
 fi
 
 # ── Verify it's teleton ──

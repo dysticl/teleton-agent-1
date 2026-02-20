@@ -505,7 +505,7 @@ This allows rapid iteration: edit your plugin file, save, and the changes take e
 
 ## Official Example Plugins
 
-The [teleton-plugins](https://github.com/TONresistor/teleton-plugins) repository contains maintained example plugins you can use as reference or install directly:
+The [teleton-plugins](https://github.com/dysticl/teleton-plugins) repository contains maintained example plugins you can use as reference or install directly:
 
 - **Casino** -- Slot machine and dice games with persistent balances
 - More community plugins coming soon

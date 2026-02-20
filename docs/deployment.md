@@ -70,7 +70,7 @@ docker run -d \
   --restart unless-stopped \
   -v teleton-data:/data \
   -p 7777:7777 \
-  ghcr.io/tonresistor/teleton-agent
+  ghcr.io/dysticl/teleton-agent
 ```
 
 ### Image Details
@@ -93,7 +93,7 @@ Since the first run requires interactive authentication with Telegram, run setup
 # Run setup interactively
 docker run -it --rm \
   -v teleton-data:/data \
-  ghcr.io/tonresistor/teleton-agent setup
+  ghcr.io/dysticl/teleton-agent setup
 
 # Then start the agent
 docker run -d \
@@ -101,7 +101,7 @@ docker run -d \
   --restart unless-stopped \
   -v teleton-data:/data \
   -p 7777:7777 \
-  ghcr.io/tonresistor/teleton-agent
+  ghcr.io/dysticl/teleton-agent
 ```
 
 ### Passing Configuration via Environment
@@ -119,7 +119,7 @@ docker run -d \
   -e TELETON_WEBUI_ENABLED="true" \
   -v teleton-data:/data \
   -p 7777:7777 \
-  ghcr.io/tonresistor/teleton-agent
+  ghcr.io/dysticl/teleton-agent
 ```
 
 Note: A `config.yaml` must still exist in the data volume with at minimum the non-overridden fields. Run `setup` first to create it.
@@ -135,7 +135,7 @@ version: "3.8"
 
 services:
   teleton:
-    image: ghcr.io/tonresistor/teleton-agent:latest
+    image: ghcr.io/dysticl/teleton-agent:latest
     container_name: teleton
     restart: unless-stopped
     ports:
@@ -192,7 +192,7 @@ For development or when you need to customize the agent.
 
 ```bash
 # Clone the repository
-git clone https://github.com/TONresistor/teleton-agent.git
+git clone https://github.com/dysticl/teleton-agent.git
 cd teleton-agent
 
 # Install dependencies (includes SDK workspace)
@@ -424,14 +424,14 @@ npm install -g teleton@0.5.2
 ### Docker
 
 ```bash
-docker pull ghcr.io/tonresistor/teleton-agent:latest
+docker pull ghcr.io/dysticl/teleton-agent:latest
 docker stop teleton && docker rm teleton
 docker run -d \
   --name teleton \
   --restart unless-stopped \
   -v teleton-data:/data \
   -p 7777:7777 \
-  ghcr.io/tonresistor/teleton-agent
+  ghcr.io/dysticl/teleton-agent
 ```
 
 Or with Docker Compose:
@@ -458,7 +458,7 @@ For production stability, pin to a specific version tag:
 
 ```bash
 # Docker
-ghcr.io/tonresistor/teleton-agent:v0.5.2
+ghcr.io/dysticl/teleton-agent:v0.5.2
 
 # npm
 npm install -g teleton@0.5.2

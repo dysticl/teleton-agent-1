@@ -27,7 +27,7 @@ jobs:
 
       - name: Add upstream remote
         run: |
-          git remote add upstream https://github.com/TONresistor/teleton-agent.git
+          git remote add upstream https://github.com/dysticl/teleton-agent.git
           git fetch upstream main
 
       - name: Check for new upstream commits
