@@ -42,64 +42,64 @@
 
 ---
 
-## Für Kirill — Schnellstart-Anleitung 🚀
+## Для Кирилла
 
-Hey Kirill! Hier ist die Schritt-für-Schritt Anleitung, wie du den Telegram-Agenten auf deinem PC zum Laufen bringst.
+Привет, Кирилл! Вот пошаговая инструкция, как запустить Telegram-агента на твоём ПК.
 
-### Was du brauchst
+### Что тебе понадобится
 
-1. **Node.js 20+** — [nodejs.org](https://nodejs.org/) → LTS Version runterladen und installieren
-2. **Git** — [git-scm.com](https://git-scm.com/download/win) → Installer mit Standardeinstellungen
-3. **Google Gemini API Key** (kostenlos) — [aistudio.google.com](https://aistudio.google.com/) → API Key erstellen
-4. **Telegram API ID + Hash** — [my.telegram.org/apps](https://my.telegram.org/apps) → Mit dem Telegram-Account einloggen, den du für den Bot nutzen willst
-5. **Deine Telegram User-ID** — [@userinfobot](https://t.me/userinfobot) auf Telegram anschreiben, der antwortet mit deiner ID
+1. **Node.js 20+** — https://nodejs.org/ → скачать и установить версию LTS  
+2. **Git** — https://git-scm.com/download/win → установить с настройками по умолчанию  
+3. **Google Gemini API Key** (бесплатно) — https://aistudio.google.com/ → создать API-ключ  
+4. **Telegram API ID + Hash** — https://my.telegram.org/apps → войти через аккаунт Telegram, который будешь использовать для бота  
+5. **Твой Telegram User-ID** — написать боту https://t.me/userinfobot, он ответит с твоим ID  
 
-> ⚠️ **Wichtig**: Benutze einen **separaten Telegram-Account** für den Bot, nicht deinen Haupt-Account! Der Agent hat volle Kontrolle über den Account.
+> ⚠️ **Важно**: используй **отдельный Telegram-аккаунт** для бота, а не основной! Агент получает полный контроль над аккаунтом.
 
-### Einrichtung (Windows PowerShell)
+### Установка (Windows PowerShell)
 
 ```powershell
-# 1. Repo klonen
+# 1. Клонировать репозиторий
 cd ~\Desktop
 git clone https://github.com/dysticl/teleton-agent.git
 cd teleton-agent
 
-# 2. Dependencies installieren
+# 2. Установить зависимости
 npm install
 
-# 3. Projekt bauen
+# 3. Собрать проект
 npm run build
 
-# 4. Global installieren (damit 'teleton' als Befehl funktioniert)
+# 4. Установить глобально (чтобы команда 'teleton' работала)
 npm link
 
-# 5. Setup-Wizard starten
+# 5. Запустить мастер настройки
 teleton setup
 ```
 
-Der Setup-Wizard fragt dich nach:
-- **LLM Provider** → `google` wählen
-- **API Key** → Dein Google Gemini Key (`AIza...`)
-- **Model** → `gemini-2.0-flash`
-- **Telegram API ID** → Von my.telegram.org
-- **Telegram API Hash** → Von my.telegram.org
-- **Telefonnummer** → Mit Ländervorwahl (z.B. `+49170...` oder `+7...`)
-- **Verifizierungscode** → Kommt als Telegram-Nachricht
-- **Admin User-ID** → Deine Telegram User-ID (von @userinfobot)
+Мастер настройки спросит у тебя:
+	•	LLM Provider → выбрать google
+	•	API Key → твой Google Gemini ключ (AIza...)
+	•	Model → gemini-2.0-flash
+	•	Telegram API ID → с my.telegram.org
+	•	Telegram API Hash → с my.telegram.org
+	•	Телефон → с кодом страны (например, +49170... или +7...)
+	•	Код подтверждения → придёт в Telegram
+	•	Admin User-ID → твой Telegram ID (от @userinfobot)
 
-### Plugins installieren
+Установка плагинов
 
-Die Plugins sind separat und geben dem Bot extra Funktionen (Gift-Statistiken, Krypto-Preise, etc.):
+Плагины устанавливаются отдельно и добавляют боту дополнительные функции (статистика подарков, крипто-цены и т.д.):
 
 ```powershell
-# Plugins-Repo klonen (temporär)
+# Клонировать репозиторий с плагинами (временно)
 cd ~\Desktop
 git clone https://github.com/TONresistor/teleton-plugins.git
 
-# Plugin-Ordner erstellen
+# Создать папку для плагинов
 mkdir -Force "$HOME\.teleton\plugins"
 
-# Plugins kopieren (die wichtigsten)
+# Скопировать основные плагины
 Copy-Item -Recurse ~\Desktop\teleton-plugins\plugins\tonapi "$HOME\.teleton\plugins\tonapi"
 Copy-Item -Recurse ~\Desktop\teleton-plugins\plugins\giftstat "$HOME\.teleton\plugins\giftstat"
 Copy-Item -Recurse ~\Desktop\teleton-plugins\plugins\crypto-prices "$HOME\.teleton\plugins\crypto-prices"
@@ -107,28 +107,28 @@ Copy-Item -Recurse ~\Desktop\teleton-plugins\plugins\geckoterminal "$HOME\.telet
 Copy-Item -Recurse ~\Desktop\teleton-plugins\plugins\dyor "$HOME\.teleton\plugins\dyor"
 Copy-Item -Recurse ~\Desktop\teleton-plugins\plugins\fragment "$HOME\.teleton\plugins\fragment"
 
-# Dependencies für Plugins installieren
+# Установить зависимости для плагинов
 cd "$HOME\.teleton\plugins\tonapi" ; npm install ; cd ~\Desktop\teleton-agent
 cd "$HOME\.teleton\plugins\giftstat" ; npm install ; cd ~\Desktop\teleton-agent
 cd "$HOME\.teleton\plugins\dyor" ; npm install ; cd ~\Desktop\teleton-agent
 cd "$HOME\.teleton\plugins\geckoterminal" ; npm install ; cd ~\Desktop\teleton-agent
 ```
 
-### Starten
+### Запуск
 
 ```powershell
 cd ~\Desktop\teleton-agent
 
-# Normal starten
+# Обычный запуск
 teleton start
 
-# Mit Web-Dashboard (empfohlen)
+# С веб-интерфейсом (рекомендуется)
 teleton start --webui
 ```
 
-Wenn der Bot läuft, schick ihm auf Telegram `/ping` — er sollte mit "Pong!" antworten.
+Когда бот запустится, отправь ему в Telegram команду /ping — он должен ответить “Pong!”.
 
-### Falls etwas nicht klappt
+### Если что-то не работает
 
 | Problem | Lösung |
 |---------|--------|
@@ -136,8 +136,6 @@ Wenn der Bot läuft, schick ihm auf Telegram `/ping` — er sollte mit "Pong!" a
 | Bot antwortet nicht | `/resume` an den Bot schicken, oder `teleton start` neustarten |
 | Telegram Session abgelaufen | `del $HOME\.teleton\telegram_session.txt` und neustarten |
 | WebUI Flag unbekannt | `npm run build` nochmal ausführen |
-
-Bei Fragen einfach melden! 👋
 
 ---
 
