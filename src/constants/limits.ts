@@ -1,5 +1,5 @@
 /** Maximum serialized tool result size before truncation */
-export const MAX_TOOL_RESULT_SIZE = 50_000;
+export const MAX_TOOL_RESULT_SIZE = 8_000;
 export const MAX_FILENAME_LENGTH = 255;
 export const DEFAULT_GIFTS_QUERY_LIMIT = 50;
 export const MAX_POLL_QUESTION_LENGTH = 300;
@@ -12,10 +12,10 @@ export const SQLITE_CACHE_SIZE_KB = 64_000;
 export const SQLITE_MMAP_SIZE = 256_000_000;
 export const SECONDS_PER_DAY = 86_400;
 export const SECONDS_PER_HOUR = 3_600;
-export const COMPACTION_MAX_MESSAGES = 200;
-export const COMPACTION_KEEP_RECENT = 20;
-export const COMPACTION_MAX_TOKENS_RATIO = 0.75;
-export const COMPACTION_SOFT_THRESHOLD_RATIO = 0.5;
+export const COMPACTION_MAX_MESSAGES = 30;
+export const COMPACTION_KEEP_RECENT = 6;
+export const COMPACTION_MAX_TOKENS_RATIO = 0.4;
+export const COMPACTION_SOFT_THRESHOLD_RATIO = 0.25;
 export const PENDING_HISTORY_MAX_PER_CHAT = 50;
 export const PENDING_HISTORY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const DEBOUNCE_MAX_MULTIPLIER = 3;
@@ -36,9 +36,9 @@ export const EMBEDDING_CACHE_EVICTION_INTERVAL = 1000;
 export const MAX_WRITE_SIZE = 50 * 1024 * 1024;
 
 // ─── Compaction & Summarization ─────────────────────────────────
-export const DEFAULT_MAX_TOKENS = 96_000;
-export const DEFAULT_SOFT_THRESHOLD_TOKENS = 64_000;
-export const FALLBACK_SOFT_THRESHOLD_TOKENS = 6_000;
+export const DEFAULT_MAX_TOKENS = 32_000;
+export const DEFAULT_SOFT_THRESHOLD_TOKENS = 20_000;
+export const FALLBACK_SOFT_THRESHOLD_TOKENS = 4_000;
 export const DEFAULT_CONTEXT_WINDOW = 150_000;
 export const DEFAULT_MAX_SUMMARY_TOKENS = 2_000;
 export const DEFAULT_SUMMARY_FALLBACK_TOKENS = 1_000;
@@ -59,10 +59,16 @@ export const SESSION_SLUG_RECENT_MESSAGES = 10;
 export const SESSION_SLUG_MAX_TOKENS = 50;
 
 // ─── Observation Masking ────────────────────────────────────────
-export const MASKING_KEEP_RECENT_COUNT = 10;
+export const MASKING_KEEP_RECENT_COUNT = 3;
 
 // ─── Embedding Cache ────────────────────────────────────────────
 export const EMBEDDING_CACHE_EVICTION_RATIO = 0.1;
+
+// ─── Sliding Window Context ────────────────────────────────────
+/** Max messages to keep in direct LLM context (rest served via RAG) */
+export const CONTEXT_WINDOW_MAX_MESSAGES = 8;
+/** Max RAG-recalled conversation snippets */
+export const CONTEXT_RAG_MAX_RECALLED = 5;
 
 // ─── Web Tools ─────────────────────────────────────────────────
 export const WEB_FETCH_MAX_TEXT_LENGTH = 20_000; // default text truncation

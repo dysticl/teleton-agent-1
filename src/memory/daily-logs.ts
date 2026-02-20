@@ -52,7 +52,7 @@ export function readDailyLog(date: Date = new Date()): string | null {
   }
 }
 
-const DAILY_LOG_LINE_LIMIT = 100;
+const DAILY_LOG_LINE_LIMIT = 40;
 
 /**
  * Truncate daily log to most recent entries within line limit.

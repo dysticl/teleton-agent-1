@@ -71,7 +71,7 @@ export function loadSecurity(): string | null {
   return null;
 }
 
-const MEMORY_HARD_LIMIT = 150;
+const MEMORY_HARD_LIMIT = 80;
 export function loadPersistentMemory(): string | null {
   const content = cachedReadFile(MEMORY_PATH);
   if (!content) return null;
@@ -84,7 +84,7 @@ export function loadPersistentMemory(): string | null {
 
   const truncated = lines.slice(0, MEMORY_HARD_LIMIT).join("\n");
   const remaining = lines.length - MEMORY_HARD_LIMIT;
-  return `${truncated}\n\n_[... ${remaining} more lines not loaded. Consider consolidating MEMORY.md to keep it under ${MEMORY_HARD_LIMIT} lines.]_`;
+  return `${truncated}\n\n_[... ${remaining} more lines not loaded. Consolidate MEMORY.md.]_`;
 }
 
 export function loadMemoryContext(): string | null {
@@ -136,41 +136,14 @@ export function buildSystemPrompt(options: {
     }
   }
 
-  parts.push(`\n## Your Workspace
-
-You have a personal workspace at \`~/.teleton/workspace/\` where you can store and manage files.
-
-**Structure:**
-- \`SOUL.md\` - Your personality and behavior guidelines
-- \`MEMORY.md\` - Persistent memory (long-term facts you've learned)
-- \`STRATEGY.md\` - Business strategy and trading rules
-- \`memory/\` - Daily logs (auto-created per day)
-- \`downloads/\` - Media downloaded from Telegram
-- \`uploads/\` - Files ready to send
-- \`temp/\` - Temporary working files
-- \`memes/\` - Your meme collection (images, GIFs for reactions)
-
-**Tools available:**
-- \`workspace_list\` - List files in a directory
-- \`workspace_read\` - Read a file
-- \`workspace_write\` - Write/create a file
-- \`workspace_delete\` - Delete a file
-- \`workspace_rename\` - Rename or move a file
-- \`workspace_info\` - Get workspace stats
-
-**Tips:**
-- Save interesting memes to \`memes/\` with descriptive names for easy retrieval
-- Use \`memory_write\` for important facts (goes to MEMORY.md)
-- Rename downloaded files to meaningful names (e.g., "user_avatar.jpg" instead of "123_456_789.jpg")
+  parts.push(`\n## Workspace
+Path: \`~/.teleton/workspace/\`. Use workspace tools (\`workspace_list\`, \`workspace_read\`, \`workspace_write\`, \`workspace_delete\`, \`workspace_rename\`, \`workspace_info\`) to manage files. Key files: \`SOUL.md\`, \`MEMORY.md\`, \`STRATEGY.md\`. Dirs: \`memory/\`, \`downloads/\`, \`uploads/\`, \`temp/\`, \`memes/\`.
 `);
 
   parts.push(`\n## Response Format
-- Be concise. Respond in 1-3 short sentences when possible. Avoid long paragraphs and walls of text.
-- Only elaborate when the user explicitly asks for detail or the topic genuinely requires it.
-- Keep responses under 4000 characters for Telegram
-- Use markdown sparingly (bold, italic, code blocks)
-- Don't use headers in short responses
-- NEVER use ASCII art or ASCII tables - they render poorly on mobile
+- Be concise — 1-3 short sentences. No walls of text.
+- Under 4000 chars for Telegram. Markdown sparingly.
+- No ASCII art or tables.
 `);
 
   if (options.ownerName || options.ownerUsername) {
@@ -191,9 +164,7 @@ You have a personal workspace at \`~/.teleton/workspace/\` where you can store a
   if (includeMemory) {
     const memoryContext = loadMemoryContext();
     if (memoryContext) {
-      parts.push(
-        `\n## Memory (Persistent Context)\n\nThis is your memory from previous sessions. Use it to maintain continuity and remember important information.\n\n${memoryContext}`
-      );
+      parts.push(`\n## Memory\n${memoryContext}`);
     }
   }
 
@@ -219,13 +190,8 @@ You have a personal workspace at \`~/.teleton/workspace/\` where you can store a
   }
 
   if (options.memoryFlushWarning) {
-    parts.push(`\n## Memory Flush Warning
-
-Your conversation context is approaching the limit and may be compacted soon.
-**Always respond to the user's message first.** Then, if there's anything important worth preserving, consider using \`memory_write\` alongside your response:
-
-- \`target: "persistent"\` for facts, lessons, contacts, decisions
-- \`target: "daily"\` for session notes, events, temporary context
+    parts.push(`\n## ⚠️ Memory Flush
+Context approaching limit. Respond first, then save important info via \`memory_write\` (persistent for facts, daily for session notes).
 `);
   }
 

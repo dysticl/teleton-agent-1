@@ -8,6 +8,8 @@ import {
   CONTEXT_MAX_RECENT_MESSAGES,
   CONTEXT_MAX_RELEVANT_CHUNKS,
   CONTEXT_OVERFLOW_SUMMARY_MESSAGES,
+  CONTEXT_WINDOW_MAX_MESSAGES,
+  CONTEXT_RAG_MAX_RECALLED,
   RATE_LIMIT_MAX_RETRIES,
 } from "../constants/limits.js";
 import { TELEGRAM_SEND_TOOLS } from "../constants/tools.js";
@@ -39,7 +41,7 @@ import {
 } from "../session/transcript.js";
 import type {
   Context,
-  Message as PiMessage,
+  Message,
   Tool as PiAiTool,
   UserMessage,
   ToolResultMessage,
@@ -75,6 +77,34 @@ function isTrivialMessage(text: string): boolean {
   const trivial =
     /^(ok|okay|k|oui|non|yes|no|yep|nope|sure|thanks|merci|thx|ty|lol|haha|cool|nice|wow|bravo|top|parfait|d'accord|alright|fine|got it|np|gg)\.?!?$/i;
   return trivial.test(stripped);
+}
+
+/**
+ * Trim context to a sliding window of recent messages.
+ * Keeps the last N messages while preserving tool call/result pairs.
+ * Older messages are NOT sent to the LLM — RAG covers historical context.
+ */
+function trimToSlidingWindow(messages: Message[], maxMessages: number): Message[] {
+  if (messages.length <= maxMessages) return messages;
+
+  // Start from the end and work backwards, keeping complete tool call/result groups
+  let cutIndex = messages.length - maxMessages;
+
+  // Ensure we don't split a tool call from its results
+  // Walk backwards from cutIndex to find a clean boundary (a user message start)
+  while (cutIndex > 0 && cutIndex < messages.length) {
+    const msg = messages[cutIndex];
+    if (msg.role === "user") break; // Clean boundary — user message starts a new turn
+    cutIndex--; // Include this message in the kept set
+  }
+
+  const kept = messages.slice(cutIndex);
+  if (kept.length !== messages.length) {
+    verbose(
+      `✂️ Sliding window: trimmed ${messages.length} → ${kept.length} messages (dropping ${cutIndex} old)`
+    );
+  }
+  return kept;
 }
 
 function extractContextSummary(context: Context, maxMessages: number = 10): string {
@@ -209,7 +239,13 @@ export class AgentRuntime {
 
       let context: Context = loadContextFromTranscript(session.sessionId);
       if (context.messages.length > 0) {
-        console.log(`📖 Loading existing session: ${session.sessionId}`);
+        console.log(
+          `📖 Loading existing session: ${session.sessionId} (${context.messages.length} msgs)`
+        );
+        // Apply sliding window — only keep recent messages in direct context.
+        // Older messages remain in transcript for compaction/memory but are NOT sent to the LLM.
+        // RAG provides relevant historical context instead.
+        context.messages = trimToSlidingWindow(context.messages, CONTEXT_WINDOW_MAX_MESSAGES);
       } else {
         console.log(`🆕 Starting new session: ${session.sessionId}`);
       }
@@ -252,7 +288,7 @@ export class AgentRuntime {
             includeFeedHistory: true,
             searchAllChats: !isGroup,
             maxRecentMessages: CONTEXT_MAX_RECENT_MESSAGES,
-            maxRelevantChunks: CONTEXT_MAX_RELEVANT_CHUNKS,
+            maxRelevantChunks: CONTEXT_RAG_MAX_RECALLED,
           });
 
           const contextParts: string[] = [];
@@ -330,6 +366,7 @@ export class AgentRuntime {
         console.log(`🗜️  Preemptive compaction triggered, reloading session...`);
         session = getSession(chatId)!;
         context = loadContextFromTranscript(session.sessionId);
+        context.messages = trimToSlidingWindow(context.messages, CONTEXT_WINDOW_MAX_MESSAGES);
         context.messages.push(userMsg);
       }
 
